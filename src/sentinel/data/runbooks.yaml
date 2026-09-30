@@ -1,0 +1,62 @@
+# Runbooks are matched against the evidence on the top root-cause node.
+# signals: metric names that should be alerting on that node
+# keywords: substrings to look for in that node's log-alert templates
+runbooks:
+  - id: RB-CPU
+    title: Control-plane / worker CPU saturation
+    fault_kind: cpu_saturation
+    signals: [cpu_pct]
+    keywords: [CPUHOG, worker pool saturated]
+    steps:
+      - "Confirm: `show processes cpu sorted` (network) or top/pprof on the service host."
+      - Identify the hot process (IP Input usually means punted traffic, check for a broadcast storm or ACL logging).
+      - Rate-limit or CoPP-police the offending traffic class; for services, scale out the worker pool.
+      - Verify latency on downstream nodes recovers, then close.
+    auto_remediation: "scale_out(service) or apply_copp_policy(device)"
+
+  - id: RB-LINK
+    title: Interface flapping / link instability
+    fault_kind: link_flap
+    signals: [packet_loss_pct]
+    keywords: [UPDOWN]
+    steps:
+      - "Check `show interface <if>` counters: CRC errors, input errors, resets."
+      - Check optic light levels (`show interface transceiver`) and the physical cable.
+      - If flapping continues, shut the interface and fail over to the redundant uplink.
+      - Enable link-flap dampening; open a ticket for a cable/optic replacement.
+    auto_remediation: "shutdown_interface_and_failover(device, interface)"
+
+  - id: RB-MEM
+    title: Memory leak / heap exhaustion
+    fault_kind: memory_leak
+    signals: [mem_pct]
+    keywords: [OutOfMemoryError, GC pause]
+    steps:
+      - Capture a heap dump before restarting (evidence for the dev team).
+      - Check recent deploys; a leak that starts right after a release points to that change.
+      - Rolling-restart the instance to restore service; roll back the release if the leak recurs.
+      - File a bug with the heap dump and memory graph attached.
+    auto_remediation: "rolling_restart(service) then rollback_if_recurs()"
+
+  - id: RB-LAT
+    title: Latency degradation / slow dependency
+    fault_kind: latency_degradation
+    signals: [latency_ms]
+    keywords: [slow query, upstream timeout]
+    steps:
+      - Check the slow-query log and active locks on the dependency.
+      - Look for missing indexes or a recent schema/query change.
+      - Shed load (circuit breaker, reduced timeouts) on callers to stop the cascade.
+      - Kill runaway queries or fail over to a replica; confirm caller error rates recover.
+    auto_remediation: "enable_circuit_breaker(callers); kill_long_queries(db)"
+
+  - id: RB-GENERIC
+    title: Unclassified anomaly
+    fault_kind: unknown
+    signals: []
+    keywords: []
+    steps:
+      - Review the alert timeline and the top root-cause candidate's metrics.
+      - Check recent changes (deploys, config pushes) around the incident start.
+      - Escalate to the owning team if no cause is found within 15 minutes.
+    auto_remediation: null

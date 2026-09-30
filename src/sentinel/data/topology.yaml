@@ -1,0 +1,13 @@
+# A small campus network plus a three-tier app running on it.
+# depends_on points UPSTREAM: a node fails or degrades when something it depends on does.
+nodes:
+  - {name: core-rtr-1,  kind: router,  depends_on: []}
+  - {name: dist-sw-1,   kind: switch,  depends_on: [core-rtr-1]}
+  - {name: dist-sw-2,   kind: switch,  depends_on: [core-rtr-1]}
+  - {name: access-sw-1, kind: switch,  depends_on: [dist-sw-1]}
+  - {name: access-sw-2, kind: switch,  depends_on: [dist-sw-1]}
+  - {name: access-sw-3, kind: switch,  depends_on: [dist-sw-2]}
+  - {name: web-1,       kind: service, depends_on: [access-sw-1, api-1]}
+  - {name: api-1,       kind: service, depends_on: [access-sw-2, db-1, cache-1]}
+  - {name: cache-1,     kind: service, depends_on: [access-sw-2]}
+  - {name: db-1,        kind: service, depends_on: [access-sw-3]}
