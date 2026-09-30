@@ -47,3 +47,16 @@ def test_hard_scenario_ground_truth_and_gaps():
 
 def test_rejects_unknown_scenario():
     assert client.post("/simulate", json={"scenario": "chaos"}).status_code == 422
+
+
+def test_incidents_expose_multiple_roots_and_silences():
+    client.post("/simulate", json={"seed": 1, "minutes": 1440, "scenario": "hard"})
+    incs = client.get("/incidents").json()
+    for i in incs:
+        assert i["root_cause"] == i["roots"][0]
+        assert set(i["runbooks"]) == set(i["roots"])
+    silent = [i for i in incs if i["silences"]]
+    assert silent, "the hard scenario should produce an incident with a silent node"
+    detail = client.get(f"/incidents/{silent[0]['incident_id']}").json()
+    assert {"node", "start", "end"} <= set(detail["silences"][0])
+    assert any(c["silent"] for c in detail["root_causes"])

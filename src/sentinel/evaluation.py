@@ -3,8 +3,15 @@
 Metrics reported (the ones an AIOps team actually tracks):
   precision / recall / F1   - incident-level, vs injected faults
   MTTD                      - mean minutes from fault start to first matching incident
-  RCA top-1 / top-3         - is the true root node the top (or a top-3) candidate?
-  classification accuracy   - did the matched runbook's fault_kind equal the true kind?
+  RCA top-1 / top-3         - per fault: is its root the top (or a top-3) candidate of the incident that
+                              carries its evidence? Roots of *other* faults in the same incident are
+                              removed from the ranking first ("filtered rank"), so an incident that
+                              ranks both of two concurrent roots first and second scores both as top-1.
+  classification accuracy   - did the runbook chosen for the fault's root have the right fault_kind?
+  wrong merge               - share of concurrent faults on unrelated branches (no dependency path)
+                              that ended up in the same incident
+  extra-root precision      - of the second and third roots an incident declares, the share that
+                              really are roots of faults active at the time
   alert compression         - raw alerts per incident (how much noise was removed)
   benign paged              - share of benign events (config pushes, restarts) that
                               produced an incident; those incidents are false positives
@@ -31,7 +38,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 
 from .correlation import Incident
-from .pipeline import PipelineConfig, PipelineResult, run_pipeline
+from .pipeline import SINGLE_ROOT_CORRELATION, PipelineConfig, PipelineResult, run_pipeline
 from .simulator import FAULT_KINDS, SCENARIOS, BenignEvent, Fault, SimulationResult, simulate
 from .topology import Topology
 
@@ -45,17 +52,22 @@ N_BOOT = 2000
 CI_LEVEL = 0.95
 
 # Ablation ladder: each row adds one stage. The README results table is this ladder on the test split.
+_OFF = SINGLE_ROOT_CORRELATION
 ABLATION: dict[str, PipelineConfig] = {
     "static_baseline": PipelineConfig.baseline(),
-    "robust_z+ewma": PipelineConfig(detectors=("robust_z", "ewma"), use_logs=False),
-    "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False),
-    "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False),
-    "sentinel": PipelineConfig(),
+    "robust_z+ewma": PipelineConfig(detectors=("robust_z", "ewma"), use_logs=False, **_OFF),
+    "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False, **_OFF),
+    "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False, **_OFF),
+    "+log mining": PipelineConfig(**_OFF),
+    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False),
+    "+silent nodes": PipelineConfig(multi_root=False),
+    "sentinel": PipelineConfig(),  # + multi-root RCA
 }
 
 OVERALL_METRICS = (
     "precision", "recall", "f1", "mttd_min", "rca_top1", "rca_top3",
     "classification_acc", "alert_compression", "n_alerts", "n_incidents", "benign_paged",
+    "wrong_merge", "same_branch_merge", "extra_root_precision",
 )
 FAULT_METRICS = ("recall", "mttd_min", "rca_top1", "rca_top3", "classification_acc")
 
@@ -78,6 +90,8 @@ class FaultOutcome:
     top1: bool
     top3: bool
     cls_ok: bool  # runbook fault_kind == true kind
+    incident_id: str | None = None  # the incident this fault was judged on
+    rank: int | None = None  # filtered rank of the root in that incident (1 = top)
 
     @property
     def bucket(self) -> str:
@@ -93,6 +107,13 @@ class DayScore:
     faults: list[FaultOutcome]
     n_benign: int = 0
     n_benign_paged: int = 0  # benign events that produced an unmatched (false-positive) incident
+    # concurrent fault pairs (both detected), and how many ended up in the same incident
+    pairs_unrelated: int = 0
+    merged_unrelated: int = 0
+    pairs_same: int = 0
+    merged_same: int = 0
+    extra_roots: int = 0  # declared roots beyond the first, over all incidents
+    extra_roots_correct: int = 0
 
 
 @dataclass
@@ -144,6 +165,7 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
     silenced = {b.cause for b in sim.blackouts if b.cause}
     matched_incidents = {i.incident_id for i in incidents if any(_matches(i, f, topo) for f in sim.faults)}
     outcomes: list[FaultOutcome] = []
+    home: dict[str, str] = {}  # fault_id -> incident judged for it
     for f in sim.faults:
         hits = [i for i in incidents if _detects(i, f, topo, silenced)]
         if not hits:
@@ -154,20 +176,54 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
         blast = {f.root, *topo.downstream(f.root)}
         first = min(max(a.start, f.start) for i in hits for a in i.alerts if a.node in blast and a.end >= f.start - PRE_SLACK)
         ttd = float(first - f.start)
-        # judge RCA on the biggest matching incident (the one on-call would work)
-        main = max(hits, key=lambda i: len(i.alerts))
-        cands = [c["node"] for c in main.root_causes]
+        # Judge RCA on the incident carrying the most evidence of this fault (the one on-call would work
+        # for it): root evidence first, then alerts in its blast radius during its window.
+        def evidence(i: Incident, f=f, blast=blast) -> tuple:
+            on_root = any(a.node == f.root for a in i.alerts) or any(s.node == f.root for s in getattr(i, "silences", []))
+            in_blast = sum(a.node in blast and a.start <= f.end + POST_SLACK and a.end >= f.start - PRE_SLACK for a in i.alerts)
+            return on_root, in_blast, len(i.alerts)
+
+        main = max(hits, key=evidence)
+        home[f.fault_id] = main.incident_id
+        other_roots = {g.root for g in sim.faults if g.root != f.root and _detects(main, g, topo, silenced)}
+        cands = [c["node"] for c in main.root_causes if c["node"] not in other_roots]
+        rank = cands.index(f.root) + 1 if f.root in cands else None
+        runbook = (getattr(main, "runbooks", None) or {}).get(f.root) or main.runbook or {}
         outcomes.append(
             FaultOutcome(
                 f.fault_id, f.kind, f.root, f.intensity, True, ttd,
-                top1=bool(cands) and cands[0] == f.root,
-                top3=f.root in cands[:3],
-                cls_ok=(main.runbook or {}).get("fault_kind") == f.kind,
+                top1=rank == 1,
+                top3=rank is not None and rank <= 3,
+                cls_ok=runbook.get("fault_kind") == f.kind,
+                incident_id=main.incident_id,
+                rank=rank,
             )
         )
+
+    pairs = {"unrelated": [0, 0], "same": [0, 0]}
+    for i, f in enumerate(sim.faults):
+        for g in sim.faults[i + 1 :]:
+            if f.start < g.end and g.start < f.end and f.fault_id in home and g.fault_id in home:
+                related = f.root in topo.upstream(g.root) or g.root in topo.upstream(f.root)
+                pair = pairs["same" if related else "unrelated"]
+                pair[0] += 1
+                pair[1] += home[f.fault_id] == home[g.fault_id]
+
+    extra = correct = 0
+    for inc in incidents:
+        declared = [c["node"] for c in inc.root_causes if c.get("declared")][1:]
+        active = {f.root for f in sim.faults if _overlaps(inc, f)}
+        extra += len(declared)
+        correct += sum(n in active for n in declared)
+
     false_pos = [i for i in incidents if i.incident_id not in matched_incidents]
     paged = sum(any(_hits_benign(i, b) for i in false_pos) for b in sim.benign)
-    return DayScore(sim.seed, len(result.alerts), len(incidents), len(matched_incidents), outcomes, len(sim.benign), paged)
+    return DayScore(
+        sim.seed, len(result.alerts), len(incidents), len(matched_incidents), outcomes, len(sim.benign), paged,
+        pairs_unrelated=pairs["unrelated"][0], merged_unrelated=pairs["unrelated"][1],
+        pairs_same=pairs["same"][0], merged_same=pairs["same"][1],
+        extra_roots=extra, extra_roots_correct=correct,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -196,7 +252,16 @@ def _day_counts(day: DayScore, keep=None) -> dict[str, float]:
         "alerts": day.n_alerts,
         "benign": day.n_benign,
         "benign_paged": day.n_benign_paged,
+        "pairs_unrelated": day.pairs_unrelated,
+        "merged_unrelated": day.merged_unrelated,
+        "pairs_same": day.pairs_same,
+        "merged_same": day.merged_same,
+        "extra_roots": day.extra_roots,
+        "extra_roots_correct": day.extra_roots_correct,
     }
+
+
+_COUNT_KEYS = ("faults", "detected", "incidents", "matched", "alerts", "benign", "pairs_unrelated", "pairs_same", "extra_roots")
 
 
 def _metrics(c: dict) -> dict:
@@ -215,6 +280,9 @@ def _metrics(c: dict) -> dict:
         "n_alerts": _ratio(c["alerts"], c["days"]),
         "n_incidents": _ratio(c["incidents"], c["days"]),
         "benign_paged": _ratio(c["benign_paged"], c["benign"]),
+        "wrong_merge": _ratio(c["merged_unrelated"], c["pairs_unrelated"]),
+        "same_branch_merge": _ratio(c["merged_same"], c["pairs_same"]),
+        "extra_root_precision": _ratio(c["extra_roots_correct"], c["extra_roots"]),
     }
 
 
@@ -303,7 +371,9 @@ def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = Non
 
     configs = {}
     for name, days in days_by_config.items():
+        totals = {k: int(sum(_day_counts(d)[k] for d in days)) for k in _COUNT_KEYS}
         configs[name] = {
+            "counts": totals,  # sample sizes behind the rates
             "overall": _with_ci(days, weights, OVERALL_METRICS),
             "by_kind": {k: fault_slice(days, lambda f, k=k: f.kind == k) for k in FAULT_KINDS},
             "by_intensity": {b: fault_slice(days, lambda f, b=b: f.bucket == b) for b in INTENSITY_BUCKETS},
@@ -355,7 +425,8 @@ _LABELS = {
     "precision": "precision", "recall": "recall", "f1": "F1", "mttd_min": "MTTD (min)",
     "rca_top1": "RCA top-1", "rca_top3": "RCA top-3", "classification_acc": "runbook match",
     "alert_compression": "alerts/incident", "n_alerts": "alerts/day", "n_incidents": "incidents/day",
-    "benign_paged": "benign paged",
+    "benign_paged": "benign paged", "wrong_merge": "wrong merge", "same_branch_merge": "same-branch merge",
+    "extra_root_precision": "extra-root precision",
 }
 
 

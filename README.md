@@ -50,34 +50,43 @@ About 9 faults per day, 273 in total.
 | Robust z + EWMA | 1.00 [1.00, 1.00] | 0.96 [0.94, 0.98] | 0.98 [0.97, 0.99] | 4.8 [3.7, 6.0] | 1.00 | 0.77 [0.71, 0.82] | 2.4 |
 | + Isolation Forest | 1.00 [1.00, 1.00] | 0.98 [0.97, 1.00] | 0.99 [0.98, 1.00] | 5.2 [4.1, 6.3] | 1.00 | 0.75 [0.70, 0.80] | 2.9 |
 | + Saturation forecast | 1.00 [1.00, 1.00] | 0.99 [0.98, 1.00] | 0.99 [0.99, 1.00] | 1.9 [1.5, 2.2] | 1.00 | 0.99 [0.98, 1.00] | 3.2 |
-| + Log mining (full) | 0.91 [0.89, 0.94] | 1.00 [1.00, 1.00] | 0.95 [0.94, 0.97] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 5.0 |
+| + Log mining | 0.91 [0.89, 0.94] | 1.00 [1.00, 1.00] | 0.95 [0.94, 0.97] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 5.0 |
+| + Incident splitting | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
+| + Silent-node evidence | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
+| + Multi-root RCA (full) | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
 
 What the ablation shows:
 
 - **Static thresholds miss almost half the faults**, and the misses are not random: they catch 3% of CPU saturations and 32% of memory leaks, but every hard link flap. Subtle faults (intensity < 0.5) are caught 31% of the time.
 - **The forecaster cuts MTTD from 5.2 to 1.9 min, all of it on memory leaks (22 to 8 min).** Without it, a leak is never flagged on `mem_pct`: the EWMA chart absorbs a slow ramp into its mean and variance, and robust z and EWMA must agree. The leak is only noticed late, through the latency and errors it causes, so its runbook match is 0%. With the forecaster it is 100%.
 - **Log mining is a trade-off.** It lifts recall to 100%, but costs 9 points of precision on the held-out days (6 on the tuning days) from log bursts that are not tied to a fault.
+- **The correlation and RCA upgrades cost one point of precision here, honestly.** Incident splitting separates 6 log-burst false alarms that used to hide inside real incidents, so they are now counted (26 to 32 false-positive incidents). Nothing else changes: with one fault at a time there is nothing to split or declare.
 - **About 51 raw alerts a day become about 10 incidents**, each with a ranked root cause and a runbook.
-- **RCA scores 1.00 here because every fault happens alone.** The hard scenario is the real test.
 
 ### Hard scenario: concurrent faults, missing telemetry, benign events
 
 The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py`): about half of the faults get a concurrent partner on the same or an unrelated branch (13.8 faults per day, 413 in total); every series has about 3 short gaps a day; one random node blackout a day; half of the hard network faults knock the device off the monitoring network; and about 3 benign config pushes or rolling restarts a day cause short, real spikes.
 
-| Configuration | Precision | Recall | F1 | MTTD (min) | RCA top-1 | RCA top-3 | Runbook match | Benign events paged |
+| Configuration | Precision | Recall | MTTD (min) | RCA top-1 | RCA top-3 | Runbook match | Wrong merges | Benign paged |
 |---|---|---|---|---|---|---|---|---|
-| Static thresholds (baseline) | 0.90 [0.85, 0.94] | 0.56 [0.51, 0.62] | 0.69 [0.65, 0.74] | 3.7 [2.7, 4.8] | 0.72 [0.65, 0.78] | 0.87 [0.82, 0.92] | 0.73 [0.68, 0.79] | 0.25 [0.16, 0.36] |
-| Robust z + EWMA | 0.77 [0.73, 0.81] | 0.94 [0.91, 0.95] | 0.85 [0.82, 0.87] | 3.7 [2.9, 4.6] | 0.67 [0.63, 0.72] | 0.90 [0.86, 0.93] | 0.60 [0.56, 0.65] | 1.00 [1.00, 1.00] |
-| + Isolation Forest | 0.77 [0.73, 0.82] | 0.97 [0.95, 0.98] | 0.86 [0.83, 0.89] | 3.8 [3.2, 4.6] | 0.65 [0.61, 0.70] | 0.90 [0.87, 0.93] | 0.57 [0.53, 0.62] | 1.00 [1.00, 1.00] |
-| + Saturation forecast | 0.77 [0.73, 0.81] | 0.98 [0.96, 0.99] | 0.86 [0.83, 0.89] | 1.7 [1.4, 1.9] | 0.64 [0.59, 0.68] | 0.90 [0.87, 0.94] | 0.71 [0.68, 0.76] | 1.00 [1.00, 1.00] |
-| + Log mining (full) | 0.72 [0.68, 0.77] | 0.99 [0.99, 1.00] | 0.84 [0.81, 0.87] | 1.7 [1.5, 1.9] | 0.62 [0.58, 0.66] | 0.91 [0.88, 0.94] | 0.70 [0.66, 0.74] | 1.00 [1.00, 1.00] |
+| Static thresholds (baseline) | 0.90 [0.85, 0.94] | 0.56 [0.51, 0.62] | 3.7 [2.6, 4.8] | 0.82 [0.75, 0.89] | 0.87 [0.82, 0.92] | 0.73 [0.68, 0.79] | 0.81 [0.60, 1.00] | 0.25 [0.16, 0.36] |
+| Robust z + EWMA | 0.77 [0.73, 0.81] | 0.94 [0.91, 0.95] | 3.7 [2.9, 4.6] | 0.83 [0.79, 0.88] | 0.90 [0.87, 0.94] | 0.60 [0.56, 0.65] | 0.80 [0.64, 0.94] | 1.00 [1.00, 1.00] |
+| + Isolation Forest | 0.77 [0.73, 0.82] | 0.97 [0.95, 0.98] | 3.9 [3.2, 4.6] | 0.82 [0.78, 0.87] | 0.91 [0.87, 0.94] | 0.57 [0.53, 0.62] | 0.83 [0.70, 0.94] | 1.00 [1.00, 1.00] |
+| + Saturation forecast | 0.77 [0.73, 0.81] | 0.98 [0.96, 0.99] | 1.6 [1.4, 1.9] | 0.83 [0.80, 0.88] | 0.91 [0.88, 0.94] | 0.71 [0.68, 0.76] | 0.87 [0.74, 0.96] | 1.00 [1.00, 1.00] |
+| + Log mining | 0.72 [0.68, 0.77] | 0.99 [0.99, 1.00] | 1.7 [1.5, 1.9] | 0.84 [0.80, 0.88] | 0.91 [0.88, 0.94] | 0.70 [0.66, 0.74] | 0.92 [0.84, 0.99] | 1.00 [1.00, 1.00] |
+| + Incident splitting | 0.75 [0.71, 0.79] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.85 [0.81, 0.89] | 0.91 [0.88, 0.94] | 0.78 [0.75, 0.82] | 0.20 [0.11, 0.30] | 1.00 [1.00, 1.00] |
+| + Silent-node evidence | 0.76 [0.71, 0.80] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.94 [0.92, 0.97] | 1.00 [1.00, 1.00] | 0.75 [0.71, 0.80] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
+| + Multi-root RCA (full) | 0.76 [0.71, 0.80] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.96 [0.94, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 
-What breaks:
+RCA is scored per fault: a fault is a top-1 hit if its root is first in the incident that carries its evidence, once the roots of *other* faults in that incident are set aside. Under the older per-incident metric (one root per incident, so a merged pair always loses one fault) the log-mining row scores 0.62; the metric change alone accounts for 0.62 to 0.84, and the pipeline changes for 0.84 to 0.96. Wrong merges: share of concurrent faults on unrelated branches that ended up in one incident.
 
-- **Every benign event pages.** A config push or rolling restart is a real spike, so every configuration with statistical detectors alerts on all of them; static thresholds page on a quarter. Benign events cause 83 of the full pipeline's 107 false-positive incidents; the other 24 are log bursts. Missing telemetry causes none.
-- **RCA top-1 falls from 1.00 to 0.62.** The correlator chains concurrent faults into one incident through shared downstream services, and the ranker names a single root, so one of the two faults is always wrong: 146 of 155 top-1 misses are merged incidents, 7 are roots that went silent. Top-3 stays at 0.91: the second root is usually in the list, just not first.
-- **Runbook match falls to 0.70** for the same reason: the runbook is chosen from the single top root.
-- **Recall and MTTD hold.** Missing telemetry does not cause false alerts or blind the detectors: every detector treats a missing point as "no evidence" (details in [DESIGN D10](docs/DESIGN.md)).
+What breaks, and what fixed it:
+
+- **Concurrent faults get chained into one incident** through the services they both feed (almost everything feeds `web-1`): 92% of unrelated concurrent pairs were merged. **Incident splitting** finds each group's origins (nodes with no earlier-alerting upstream node) and splits origins that share no dependency path and started more than a minute apart: wrong merges drop to 20%.
+- **A switch that goes dark hides the root.** Its metrics are NaN and its logs stop, so it never alerts, and the ranker picked one of its children. **Silent-node evidence** turns "every metric of this node went missing just before its dependents alerted" into an RCA candidate and a splitting origin: top-1 0.85 to 0.94, top-3 to 1.00, wrong merges to 6%.
+- **Merged same-branch faults need two answers.** **Multi-root RCA** declares a second root when the first cannot explain it (an unrelated branch, or CPU/memory symptoms, which do not cascade downstream), puts declared roots first, and matches a runbook per root: runbook match 0.75 to 0.83, top-1 to 0.96. 43 of the 46 extra roots it declares are real roots of concurrent faults.
+- **Still broken: benign events page every time**, and log bursts add false alarms. Together they hold precision at 0.76 (milestones 4 and 5).
+- **Missing telemetry does not cause false alerts or blind the detectors**: every detector treats a missing point as "no evidence" ([DESIGN D10](docs/DESIGN.md)).
 
 How the numbers are produced (details and alternatives in [`docs/DESIGN.md`](docs/DESIGN.md)):
 
@@ -143,7 +152,8 @@ Interactive docs at `/docs`.
 ## Limitations
 
 - Telemetry is synthetic. The hard scenario adds concurrent faults, missing data, and benign spikes, but not clock skew or truly messy logs.
-- In the hard scenario, RCA names one root per incident, so merged concurrent faults cost top-1 accuracy (0.62).
+- Same-branch concurrent faults are still sometimes ranked second or third (top-1 0.96, top-3 1.00): a downstream fault with only cascading symptoms (latency, errors) looks like part of the upstream one.
+- The unrelated-branch sample is small: 64 concurrent unrelated pairs on the test split, 13 on the tuning split, so the wrong-merge CI is wide.
 - Benign changes (config pushes, restarts) page every time; nothing in the pipeline knows about planned changes yet.
 - Log-burst alerts cost some precision (see results).
 - The EWMA control chart absorbs slow ramps into its baseline, so memory leaks are only caught by the forecaster ([DESIGN D5](docs/DESIGN.md)).

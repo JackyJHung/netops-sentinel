@@ -29,12 +29,13 @@ def _evidence(incident: Incident, node: str, miner: TemplateMiner | None) -> tup
     return signals, texts
 
 
-def match_runbook(incident: Incident, runbooks: list[dict], miner: TemplateMiner | None = None) -> dict:
-    """Score each runbook by metric-signal and log-keyword overlap on the root-cause node."""
+def match_runbook(incident: Incident, runbooks: list[dict], miner: TemplateMiner | None = None, node: str | None = None) -> dict:
+    """Score each runbook by metric-signal and log-keyword overlap on a root-cause node (default: the top one)."""
     generic = next(r for r in runbooks if r["id"] == "RB-GENERIC")
-    if not incident.root_cause:
+    node = node or incident.root_cause
+    if not node:
         return {**generic, "match_score": 0}
-    signals, texts = _evidence(incident, incident.root_cause, miner)
+    signals, texts = _evidence(incident, node, miner)
     blob = " ".join(texts).lower()
 
     best, best_score = generic, 0.0
@@ -59,7 +60,14 @@ def summarize(incident: Incident, fmt_time=lambda t: f"t+{t}m") -> str:
         parts.append(f"Most likely root cause: {rc['node']} (score {rc['score']}; {rc['reason']}).")
     if rb:
         parts.append(f"Suggested runbook: {rb.get('id')} ({rb.get('title')}).")
-    impacted = [n for n in incident.nodes if not rc or n != rc["node"]]
+    for c in incident.root_causes[1:]:
+        if c.get("declared"):
+            other = incident.runbooks.get(c["node"], {})
+            parts.append(f"Concurrent root cause: {c['node']} (score {c['score']}; {c['reason']}); runbook {other.get('id', 'RB-GENERIC')}.")
+    for s in incident.silences:
+        parts.append(f"{s.node} stopped sending telemetry at {fmt_time(s.start)} for {s.end - s.start} min.")
+    roots = set(incident.roots)
+    impacted = [n for n in incident.nodes if n not in roots]
     if impacted:
         parts.append(f"Impacted: {', '.join(impacted)}.")
     return " ".join(parts)

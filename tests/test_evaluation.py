@@ -108,3 +108,61 @@ def test_cli_eval_writes_split_reports(tmp_path):
     assert report["scenarios"]["clean"]["configs"]["sentinel"]["overall"]["benign_paged"]["mean"] is None
     md = (tmp_path / "benchmark-tune.md").read_text()
     assert "Scenario: clean" in md and "Scenario: hard" in md
+
+
+# ---------------------------------------------------------------- milestone 3: per-fault RCA and merges
+def _inc(iid, alerts, ranked, runbooks=None):
+    from sentinel.correlation import Incident
+
+    inc = Incident(iid, alerts)
+    inc.root_causes = [{"node": n, "declared": i == 0} for i, n in enumerate(ranked)]
+    inc.runbooks = runbooks or {}
+    inc.runbook = next(iter(inc.runbooks.values()), None)
+    return inc
+
+
+def _alert(i, node, start, end):
+    from sentinel.detection import Alert
+
+    return Alert(f"A{i}", node, "latency_ms", "robust_z+ewma", start, end, 2.0, "warning")
+
+
+def _fake_day(faults, incidents):
+    from types import SimpleNamespace
+
+    sim = SimpleNamespace(faults=faults, benign=[], blackouts=[], seed=0)
+    res = SimpleNamespace(incidents=incidents, alerts=[a for i in incidents for a in i.alerts])
+    return score_day(sim, res)
+
+
+def test_rca_rank_is_per_fault_and_filtered():
+    fa = Fault("F001", "cpu_saturation", "access-sw-3", 100, 30)
+    fb = Fault("F001b", "cpu_saturation", "cache-1", 105, 30)
+    alerts = [_alert(1, "access-sw-3", 100, 130), _alert(2, "cache-1", 105, 135), _alert(3, "api-1", 106, 135)]
+    # both true roots ranked first and second: each fault is a top-1 hit (the other true root is filtered out)
+    day = _fake_day([fa, fb], [_inc("INC-1", alerts, ["access-sw-3", "cache-1", "api-1"])])
+    assert [f.top1 for f in day.faults] == [True, True]
+    # a wrong node between them pushes the second fault to rank 2
+    day = _fake_day([fa, fb], [_inc("INC-1", alerts, ["access-sw-3", "api-1", "cache-1"])])
+    assert [f.top1 for f in day.faults] == [True, False] and day.faults[1].top3
+
+
+def test_wrong_merge_counts_unrelated_concurrent_pairs():
+    fa = Fault("F001", "cpu_saturation", "access-sw-3", 100, 30)
+    fb = Fault("F001b", "cpu_saturation", "cache-1", 105, 30)  # no dependency path to access-sw-3
+    a1, a2 = _alert(1, "access-sw-3", 100, 130), _alert(2, "cache-1", 105, 135)
+    merged = _fake_day([fa, fb], [_inc("INC-1", [a1, a2], ["access-sw-3", "cache-1"])])
+    assert (merged.pairs_unrelated, merged.merged_unrelated) == (1, 1)
+    split = _fake_day([fa, fb], [_inc("INC-1", [a1], ["access-sw-3"]), _inc("INC-2", [a2], ["cache-1"])])
+    assert (split.pairs_unrelated, split.merged_unrelated) == (1, 0)
+    r = summarize({"x": [merged, split]})["configs"]["x"]["overall"]
+    assert r["wrong_merge"]["mean"] == pytest.approx(0.5)
+
+
+def test_runbook_is_judged_for_the_faults_own_root():
+    fa = Fault("F001", "link_flap", "access-sw-3", 100, 30)
+    fb = Fault("F001b", "memory_leak", "cache-1", 105, 30)
+    alerts = [_alert(1, "access-sw-3", 100, 130), _alert(2, "cache-1", 105, 135)]
+    runbooks = {"access-sw-3": {"fault_kind": "link_flap"}, "cache-1": {"fault_kind": "memory_leak"}}
+    day = _fake_day([fa, fb], [_inc("INC-1", alerts, ["access-sw-3", "cache-1"], runbooks)])
+    assert [f.cls_ok for f in day.faults] == [True, True]

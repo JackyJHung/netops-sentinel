@@ -83,3 +83,61 @@ A running log of the choices behind NetOps Sentinel: what was tried, the numbers
 
 - Where the losses come from (`scripts/diagnose.py`, test, hard): 146 of 155 RCA top-1 misses are two concurrent faults merged into one incident, 7 are silent roots. 83 of 107 false-positive incidents are benign events, 24 are log-only bursts of `WARN retrying connection to metrics-exporter`.
 - On the tuning split the same breakdown is 51 of 53 misses merged, and 31 of 35 false positives benign. Milestone 3 works from the tuning numbers only.
+
+## Milestone 3: correlation and RCA that survive the hard scenario
+
+All choices in this milestone were made on the tuning split. The test split was run once at the end, and nothing was changed after seeing it.
+
+### D14. Score RCA per fault with a filtered rank; measure merges separately
+
+- **Metric.** For each detected fault, take the incident that carries its evidence, remove the roots of *other* faults evidenced in that incident from the candidate list, and take the rank of this fault's root ("filtered rank", as in knowledge-graph link prediction). An incident that ranks two concurrent roots first and second scores top-1 for both. Declaring extra roots does not help, because the metric only reads the ranking.
+- **The metric alone moves the number a lot.** Same milestone 2 pipeline, hard scenario, test: top-1 0.62 under the old metric (one root per incident, so a merged pair always loses one fault) vs 0.84 under the filtered rank. Every before/after table below uses the new metric on both sides.
+- **Filtered rank is lenient about merging**, so merging gets its own number: *wrong merge* = share of concurrent pairs on unrelated branches (no dependency path) judged on the same incident. Same-branch merges are reported separately and are not counted as errors (a switch fault and a fault on a service behind it are reasonably one incident, if both roots are named).
+- **Extra-root precision** keeps multi-root honest: of the second and third roots an incident declares, the share that are roots of faults active at the time.
+- **Judged incident.** A fault is now judged on the incident with the most evidence of it (an alert or silence on its root first, then alerts in its blast radius), not the biggest incident. Found because `scripts/diagnose.py` (with its own copy of the old rule) disagreed with the benchmark on two silent-root faults: the pipeline had correctly built a separate incident rooted at the silent switch, but the biggest incident was the concurrent partner's. The diagnostic now reads per-fault outcomes from `score_day`, so the two cannot drift again.
+
+### D15. Split correlated groups at their origins
+
+- **Problem.** Union-find over "overlaps in time and topologically related" is transitive, and nearly every node feeds `web-1`, so 92% of unrelated concurrent pairs were merged (test).
+- **Algorithm.** In each group, origins are nodes with no upstream node that alerted (or went silent) before them, allowing `ORIGIN_TOL` = 2 min of jitter. Origins stay together if one depends on the other or they started within `split_gap` minutes; otherwise they become separate incidents. Every other alert goes to the upstream origin cluster whose onset most recently preceded it (a shared service that alerts at 14:03 belongs to the fault that started at 14:01, not the one at 13:40).
+- **Tuning `split_gap` (tune, hard, full pipeline).** Only 13 unrelated concurrent pairs on the tuning split, so this is a small sample:
+
+| split_gap | 0 | 1 | 2 | 3 | 5 | 8 |
+|---|---|---|---|---|---|---|
+| wrong merge | 0.00 | 0.00 | 0.08 | 0.08 | 0.23 | 0.69 |
+| precision | 0.743 | 0.743 | 0.741 | 0.741 | 0.737 | 0.724 |
+
+  Kept 1 min: same result as 0, and it tolerates a one-minute polling offset between two views of the same event. The difference between 1 and 3 is one pair, so the choice is a judgment call more than a measured optimum. Test split has 64 unrelated pairs; wrong merges there: 0.92 before, 0.06 after (0.20 with splitting alone).
+- **Clean cost.** On tune, clean is unchanged. On test, clean precision drops 0.91 to 0.90: splitting separates 6 log-burst false alarms that had been hidden inside real incidents (26 to 32 false-positive incidents). They were always false alarms; now they are counted.
+
+### D16. A node that goes silent is evidence
+
+- `detect_silences`: every metric of a node missing for at least 5 min (a single missing series is a gap, not a silence; four independent series rarely go missing together by chance).
+- A silence is attached to an incident if its node alerted in the group or is upstream of an alerting node, and it started between 15 min before and 3 min after that node's first alert. Attached silences are RCA candidates (onset = silence start) and origins for splitting, so a dark switch holds its children in one incident instead of letting them split into two.
+- **Numbers (test, hard).** Top-1 0.85 to 0.94, top-3 0.91 to 1.00, wrong merges 0.20 to 0.06.
+- **RCA jitter fix.** One miss on tune was a silent switch that went dark 1 min *after* its child's first alert (polling delay), so the child was not penalised as "depends on an earlier-alerting node". RCA now uses the same `ORIGIN_TOL` as correlation.
+- **Risk.** A random blackout of an upstream node that happens to start within that window around an unrelated incident would be credited as a root. Not observed on tune; worth watching with real data.
+
+### D17. Multiple root causes per incident
+
+- After ranking, the top candidate is declared a root; a later candidate is also declared (if it scores at least 40% of the top one) when the declared roots cannot explain it: it is on an unrelated branch, or it is downstream but shows CPU or memory symptoms, which do not cascade to dependents. Declared roots are listed first, and each gets its own runbook.
+- **Numbers (test, hard).** Runbook match 0.75 to 0.83; top-1 0.94 to 0.96. Extra-root precision 43 of 46.
+- **Remaining misses (tune, 3 of 137).** All same-branch concurrent faults where the downstream fault only has cascading symptoms (latency, errors), for example a latency fault on `db-1` during a CPU fault on `core-rtr-1`. The root is ranked 2nd or 3rd, so top-3 is still 1.00. Tried reasoning about late onsets ("a downstream node that starts alerting 14 min after its upstream root must be a new fault") on paper and rejected it: memory-leak cascades legitimately arrive late, so it would declare false roots on every leak.
+
+### D18. Milestone 3 before and after (test split)
+
+| Hard scenario | Precision | RCA top-1 | RCA top-3 | Runbook match | Wrong merges | MTTD (min) |
+|---|---|---|---|---|---|---|
+| Milestone 2 pipeline, old metric | 0.72 | 0.62 | 0.91 | 0.70 | n/a | 1.7 |
+| Milestone 2 pipeline, per-fault metric | 0.72 [0.68, 0.77] | 0.84 [0.80, 0.88] | 0.91 [0.88, 0.94] | 0.70 [0.66, 0.74] | 0.92 [0.84, 0.99] | 1.7 |
+| + incident splitting | 0.75 [0.71, 0.79] | 0.85 [0.81, 0.89] | 0.91 [0.88, 0.94] | 0.78 [0.75, 0.82] | 0.20 [0.11, 0.30] | 1.8 |
+| + silent-node evidence | 0.76 [0.71, 0.80] | 0.94 [0.92, 0.97] | 1.00 [1.00, 1.00] | 0.75 [0.71, 0.80] | 0.06 [0.01, 0.12] | 1.8 |
+| + multi-root RCA | 0.76 [0.71, 0.80] | 0.96 [0.94, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.87] | 0.06 [0.01, 0.12] | 1.8 |
+
+| Clean scenario | Precision | Recall | RCA top-1 | Runbook match |
+|---|---|---|---|---|
+| Before | 0.91 [0.89, 0.94] | 1.00 | 1.00 | 1.00 |
+| After | 0.90 [0.87, 0.93] | 1.00 | 1.00 | 1.00 |
+
+- MTTD rises 1.7 to 1.8 min (within the CI): when a group is split, an early alert in a fault's blast radius can land in the partner's incident, which no longer counts as this fault's first page.
+- Runbook match dips when silent nodes are added (0.78 to 0.75) and recovers with multi-root. Checked on tune: the 3 faults that lose their runbook all get `RB-GENERIC`, because a silent root has no alerts to match a runbook on. One is the fault's own silent root; in the other two, a concurrent silent root is the incident's only root until multi-root gives the second fault its own runbook. Worth fixing by inferring the runbook for a silent network device from its children's symptoms.
