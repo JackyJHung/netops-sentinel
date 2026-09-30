@@ -35,7 +35,8 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 ## Current state (Sep 30, 2026)
 
 - 10-seed benchmark: sentinel P 0.94 / R 1.00 / MTTD 1.97 min vs static baseline R 0.49.
-- API tests were only verified via a stub (PyPI was blocked in the build sandbox); CI runs the real ones.
+- All 28 tests, including the real FastAPI/httpx API tests, pass with real dependencies installed.
+- Ruff rules are pinned in `pyproject.toml` (`E4, E7, E9, F`) because ruff 0.16 widened its defaults.
 - Known weaknesses: log-burst alerts cost ~6 pts precision; RCA is 1.00 because faults never overlap.
 
 ## Next steps (roadmap order)
