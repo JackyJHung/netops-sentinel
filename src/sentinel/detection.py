@@ -11,10 +11,16 @@ Detectors:
                         with baseline freezing while anomalous
   * SaturationForecast - trend projection: "memory will hit 95% in ~40 min"
   * NodeIsolationForest - multivariate per-node model (scikit-learn)
+
+Missing telemetry arrives as NaN. Every detector treats a missing point as
+"no evidence": it never scores as anomalous, it is not learned into any
+baseline, and windows with too few real points produce no score at all.
+Series without NaN take the original code paths, so results are unchanged.
 """
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -30,6 +36,13 @@ SCALE_FLOOR = {  # (absolute floor, relative-to-median floor)
     "packet_loss_pct": (0.5, 0.0),
     "error_rate_pct": (0.5, 0.0),
 }
+
+def _quiet_nanmedian(a: np.ndarray, axis=None) -> np.ndarray:
+    """nanmedian without the 'All-NaN slice' warning (an all-missing window is expected, not an error)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return np.nanmedian(a, axis=axis)
+
 
 STATIC_LIMITS = {
     "cpu_pct": 85.0,
@@ -70,8 +83,8 @@ class StaticThreshold:
     def score(self, x: np.ndarray) -> np.ndarray:
         limit = STATIC_LIMITS[self.metric]
         if limit is None:
-            limit = 4.0 * float(np.median(x[: self.warmup]))
-        return x / max(limit, 1e-9)
+            limit = 4.0 * float(_quiet_nanmedian(x[: self.warmup]))
+        return x / max(limit, 1e-9)  # NaN in, NaN out: never above threshold
 
 
 class RobustZScore:
@@ -83,6 +96,7 @@ class RobustZScore:
         self.metric = metric
         self.window = window
         self.threshold = threshold
+        self.min_valid = max(5, window // 4)  # fewer real points than this in the history: no score
 
     def score(self, x: np.ndarray) -> np.ndarray:
         n, w = len(x), self.window
@@ -91,9 +105,16 @@ class RobustZScore:
         if n > w:
             # windows[i] = x[i : i + w]  ->  history for point i + w
             windows = np.lib.stride_tricks.sliding_window_view(x[:-1], w)
-            m = np.median(windows, axis=1)
+            if np.isnan(x).any():
+                m = _quiet_nanmedian(windows, axis=1)
+                d = _quiet_nanmedian(np.abs(windows - m[:, None]), axis=1)
+                thin = (~np.isnan(windows)).sum(axis=1) < self.min_valid
+                m[thin], d[thin] = np.nan, np.nan
+            else:
+                m = np.median(windows, axis=1)
+                d = np.median(np.abs(windows - m[:, None]), axis=1)
             med[w:] = m
-            mad[w:] = np.median(np.abs(windows - m[:, None]), axis=1)
+            mad[w:] = d
         abs_floor, rel_floor = SCALE_FLOOR.get(self.metric, (1e-6, 0.0))
         scale = np.maximum.reduce([1.4826 * mad, rel_floor * np.abs(med), np.full(n, abs_floor)])
         z = (x - med) / np.maximum(scale, 1e-9)
@@ -116,10 +137,16 @@ class EWMAControl:
         n = len(x)
         out = np.zeros(n)
         w = min(self.warmup, n)
-        mean = float(np.mean(x[:w]))
-        var = float(np.var(x[:w]))
+        head = x[:w][~np.isnan(x[:w])]
+        mean = float(np.mean(head)) if head.size else float("nan")
+        var = float(np.var(head)) if head.size else 0.0
         abs_floor, rel_floor = SCALE_FLOOR.get(self.metric, (1e-6, 0.0))
         for i in range(w, n):
+            if x[i] != x[i]:  # missing point: no score, no baseline update
+                continue
+            if mean != mean:  # nothing seen yet: start the baseline here
+                mean = float(x[i])
+                continue
             sd = max(np.sqrt(var), abs_floor, rel_floor * abs(mean), 1e-9)
             z = (x[i] - mean) / sd
             out[i] = z
@@ -156,6 +183,8 @@ class SaturationForecast:
         eta = np.full(n, np.inf)
         if n < w:
             return slope, eta
+        if np.isnan(x).any():
+            return self._fit_with_gaps(x, slope, eta)
         win = np.lib.stride_tricks.sliding_window_view(x, w)  # win[i] ends at point i + w - 1
         t = np.arange(w) - (w - 1) / 2
         b = (win * t).sum(axis=1) / (t * t).sum()
@@ -166,6 +195,29 @@ class SaturationForecast:
         with np.errstate(divide="ignore", invalid="ignore"):
             steps = np.where((b > 0) & (tstat >= self.min_t), (self.limit - last) / b, np.inf)
         slope[w - 1 :] = b
+        eta[w - 1 :] = np.maximum(steps, 0)
+        return slope, eta
+
+    def _fit_with_gaps(self, x: np.ndarray, slope: np.ndarray, eta: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Least squares over the real points in each window; windows under 60% real points give no forecast."""
+        w = self.window
+        valid = ~np.isnan(x)
+        V = np.lib.stride_tricks.sliding_window_view(valid.astype(float), w)
+        X = np.lib.stride_tricks.sliding_window_view(np.where(valid, x, 0.0), w)
+        t = np.arange(w, dtype=float)
+        cnt, st, stt = V.sum(axis=1), V @ t, V @ (t * t)
+        sx, stx = X.sum(axis=1), X @ t
+        with np.errstate(divide="ignore", invalid="ignore"):
+            sxx = stt - st * st / cnt
+            b = (stx - st * sx / cnt) / sxx
+            a = (sx - b * st) / cnt
+            resid = (X - a[:, None] - b[:, None] * t) * V
+            se = np.sqrt((resid**2).sum(axis=1) / (cnt - 2) / sxx)
+            tstat = b / np.maximum(se, 1e-9)
+            last = a + b * (w - 1)  # fitted value at the window end (the point itself may be missing)
+            ok = (cnt >= 0.6 * w) & (b > 0) & (tstat >= self.min_t)
+            steps = np.where(ok, (self.limit - last) / b, np.inf)
+        slope[w - 1 :] = np.where(ok, b, 0.0)
         eta[w - 1 :] = np.maximum(steps, 0)
         return slope, eta
 
@@ -203,7 +255,9 @@ class NodeIsolationForest:
         model = IsolationForest(n_estimators=200, random_state=self.seed).fit(train)
         s = -model.score_samples(Z)  # higher = more anomalous
         cutoff = np.max(s[self.window : self.warmup]) + self.margin
-        return s - cutoff  # > 0 means anomalous
+        out = s - cutoff  # > 0 means anomalous
+        out[frame.isna().to_numpy().all(axis=1)] = -1.0  # a node that sent nothing is not scored here
+        return out
 
 
 # --------------------------------------------------------------------------
@@ -226,7 +280,7 @@ def intervals(mask: np.ndarray, min_len: int = 3, max_gap: int = 2) -> list[tupl
 def _alerts_from_score(node, signal, detector, score, threshold, start_id, min_len=3):
     alerts = []
     for a, b in intervals(score > threshold, min_len=min_len):
-        peak = float(np.max(score[a:b]))
+        peak = float(np.nanmax(score[a:b]))
         sev = "critical" if peak > max(2 * threshold, threshold + 0.1) else "warning"
         alerts.append(
             Alert(

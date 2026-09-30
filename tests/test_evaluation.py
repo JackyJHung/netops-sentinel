@@ -101,7 +101,10 @@ def test_cli_eval_writes_split_reports(tmp_path):
     main(["eval", "--split", "tune", "--seeds", "1", "--minutes", "600", "--jobs", "1", "--out", str(tmp_path)])
     report = json.loads((tmp_path / "benchmark-tune.json").read_text())
     assert report["split"] == "tune" and report["seeds"] == [0]
-    overall = report["configs"]["sentinel"]["overall"]
-    assert {"mean", "lo", "hi"} <= set(overall["recall"])
-    assert set(report["configs"]["sentinel"]["by_kind"]) == {"cpu_saturation", "link_flap", "memory_leak", "latency_degradation"}
-    assert (tmp_path / "benchmark-tune.md").exists()
+    assert set(report["scenarios"]) == {"clean", "hard"}
+    sentinel = report["scenarios"]["hard"]["configs"]["sentinel"]
+    assert {"mean", "lo", "hi"} <= set(sentinel["overall"]["recall"])
+    assert set(sentinel["by_kind"]) == {"cpu_saturation", "link_flap", "memory_leak", "latency_degradation"}
+    assert report["scenarios"]["clean"]["configs"]["sentinel"]["overall"]["benign_paged"]["mean"] is None
+    md = (tmp_path / "benchmark-tune.md").read_text()
+    assert "Scenario: clean" in md and "Scenario: hard" in md

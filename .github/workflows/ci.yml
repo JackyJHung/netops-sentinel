@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
-      - run: ruff check src tests
+      - run: ruff check src tests scripts
       - run: pytest -q
       - name: Benchmark smoke test (tuning split only; held-out numbers are for reporting)
         run: sentinel eval --split tune --seeds 3 --out reports

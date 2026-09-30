@@ -41,6 +41,7 @@
   <div class="controls">
     <label class="muted">seed <input id="seed" type="number" value="42" style="width:70px"></label>
     <select id="config"><option value="sentinel">sentinel</option><option value="static">static baseline</option></select>
+    <select id="scenario" title="clean: one fault at a time, complete telemetry. hard: concurrent faults, missing telemetry, benign events."><option value="clean">clean</option><option value="hard">hard</option></select>
     <button id="run">Simulate day</button>
   </div>
 </header>
@@ -59,7 +60,8 @@ async function loadKpis() {
   const e = await api("/evaluation");
   const k = [["Precision", e.precision], ["Recall", e.recall], ["F1", e.f1], ["MTTD (min)", e.mttd_min],
              ["RCA top-1", e.rca_top1], ["Runbook match", e.classification_acc], ["Alerts", e.n_alerts], ["Incidents", e.n_incidents]];
-  $("kpis").innerHTML = k.map(([n, v]) => `<div class="kpi"><b>${v}</b><small>${n}</small></div>`).join("");
+  if (e.benign_events) k.push(["Benign paged", `${e.benign_paged}/${e.benign_events}`]);
+  $("kpis").innerHTML = k.map(([n, v]) => `<div class="kpi"><b>${v ?? "n/a"}</b><small>${n}</small></div>`).join("");
 }
 
 async function loadList() {
@@ -122,7 +124,7 @@ $("run").onclick = async () => {
   $("run").disabled = true; $("run").textContent = "Running…";
   try {
     await api("/simulate", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seed: +$("seed").value, config: $("config").value }) });
+      body: JSON.stringify({ seed: +$("seed").value, config: $("config").value, scenario: $("scenario").value }) });
     await Promise.all([loadKpis(), loadList()]);
   } finally { $("run").disabled = false; $("run").textContent = "Simulate day"; }
 };

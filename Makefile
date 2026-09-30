@@ -7,7 +7,7 @@ test:
 	pytest -q
 
 lint:
-	ruff check src tests
+	ruff check src tests scripts
 
 run:
 	sentinel run --seed 42 -v

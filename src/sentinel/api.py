@@ -9,9 +9,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from .evaluation import evaluate
+from .evaluation import evaluate, score_day
 from .pipeline import PipelineConfig, PipelineResult, run_pipeline
-from .simulator import SimulationResult, simulate
+from .simulator import SCENARIOS, SimulationResult, simulate
 from .topology import Topology
 
 app = FastAPI(title="NetOps Sentinel", version="0.1.0", description="AIOps anomaly detection, alert correlation, and root-cause analysis")
@@ -25,10 +25,11 @@ class SimulateRequest(BaseModel):
     seed: int = 42
     minutes: int = Field(1440, ge=300, le=10080)
     config: str = Field("sentinel", pattern="^(sentinel|static)$")
+    scenario: str = Field("clean", pattern="^(" + "|".join(SCENARIOS) + ")$")
 
 
 def _run(req: SimulateRequest) -> None:
-    sim = simulate(_topo, minutes=req.minutes, seed=req.seed)
+    sim = simulate(_topo, minutes=req.minutes, seed=req.seed, **SCENARIOS[req.scenario])
     cfg = PipelineConfig.baseline() if req.config == "static" else PipelineConfig()
     _state["sim"], _state["result"] = sim, run_pipeline(sim, _topo, cfg)
 
@@ -56,7 +57,7 @@ def simulate_endpoint(req: SimulateRequest) -> dict:
     with _lock:
         _run(req)
     sim, res = _state["sim"], _state["result"]
-    return {"faults": len(sim.faults), "alerts": len(res.alerts), "incidents": len(res.incidents)}
+    return {"scenario": req.scenario, "faults": len(sim.faults), "alerts": len(res.alerts), "incidents": len(res.incidents)}
 
 
 @app.get("/topology")
@@ -85,10 +86,22 @@ def faults() -> list[dict]:
     return [_with_times(sim, f.to_dict()) for f in sim.faults]
 
 
+@app.get("/ground-truth")
+def ground_truth() -> dict:
+    """Injected faults plus the things that are *not* faults: benign events and telemetry blackouts."""
+    sim, _ = _current()
+    return {
+        "faults": [_with_times(sim, f.to_dict()) for f in sim.faults],
+        "benign": [_with_times(sim, b.to_dict()) for b in sim.benign],
+        "blackouts": [_with_times(sim, b.to_dict()) for b in sim.blackouts],
+    }
+
+
 @app.get("/evaluation")
 def evaluation() -> dict:
     sim, res = _current()
-    return evaluate(sim, res, _topo).to_dict()
+    day = score_day(sim, res, _topo)
+    return {**evaluate(sim, res, _topo).to_dict(), "benign_events": day.n_benign, "benign_paged": day.n_benign_paged}
 
 
 @app.get("/series/{node}/{metric}")
@@ -100,7 +113,7 @@ def series(node: str, metric: str) -> dict:
         "node": node,
         "metric": metric,
         "t": [sim.timestamp(t).strftime("%H:%M") for t in sim.metrics.index],
-        "values": [round(float(v), 3) for v in sim.series(node, metric)],
+        "values": [round(float(v), 3) if v == v else None for v in sim.series(node, metric)],  # NaN = missing
     }
 
 

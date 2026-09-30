@@ -30,3 +30,20 @@ def test_simulate_and_query():
 def test_dashboard_served():
     r = client.get("/")
     assert r.status_code == 200 and "NetOps Sentinel" in r.text
+
+
+def test_hard_scenario_ground_truth_and_gaps():
+    r = client.post("/simulate", json={"seed": 5, "minutes": 1440, "scenario": "hard"})
+    assert r.status_code == 200 and r.json()["scenario"] == "hard"
+    truth = client.get("/ground-truth").json()
+    assert truth["faults"] and truth["benign"] and truth["blackouts"]
+    b = truth["blackouts"][0]
+    node_kind = {n["name"]: n["kind"] for n in client.get("/topology").json()["nodes"]}[b["node"]]
+    metric = "error_rate_pct" if node_kind == "service" else "packet_loss_pct"
+    s = client.get(f"/series/{b['node']}/{metric}").json()  # NaN must serialize as null, not crash
+    assert s["values"][b["start"]] is None
+    assert "benign_paged" in client.get("/evaluation").json()
+
+
+def test_rejects_unknown_scenario():
+    assert client.post("/simulate", json={"scenario": "chaos"}).status_code == 422

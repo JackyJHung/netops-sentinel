@@ -6,6 +6,8 @@ Metrics reported (the ones an AIOps team actually tracks):
   RCA top-1 / top-3         - is the true root node the top (or a top-3) candidate?
   classification accuracy   - did the matched runbook's fault_kind equal the true kind?
   alert compression         - raw alerts per incident (how much noise was removed)
+  benign paged              - share of benign events (config pushes, restarts) that
+                              produced an incident; those incidents are false positives
 
 Benchmark protocol (see docs/DESIGN.md):
   * Seeds are split. `tune` (0-9) is for development and threshold tuning;
@@ -16,6 +18,8 @@ Benchmark protocol (see docs/DESIGN.md):
     simulated days with replacement and recompute the pooled metric. The day
     is the independent unit; faults on the same day share telemetry.
   * Fault-level metrics are broken down by fault kind and intensity bucket.
+  * Every split is run on two scenarios: `clean` (one fault at a time, perfect
+    telemetry) and `hard` (concurrent faults, missing telemetry, benign events).
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ import numpy as np
 
 from .correlation import Incident
 from .pipeline import PipelineConfig, PipelineResult, run_pipeline
-from .simulator import FAULT_KINDS, Fault, SimulationResult, simulate
+from .simulator import FAULT_KINDS, SCENARIOS, BenignEvent, Fault, SimulationResult, simulate
 from .topology import Topology
 
 PRE_SLACK = 5    # minutes before fault start an incident may begin and still count
@@ -51,7 +55,7 @@ ABLATION: dict[str, PipelineConfig] = {
 
 OVERALL_METRICS = (
     "precision", "recall", "f1", "mttd_min", "rca_top1", "rca_top3",
-    "classification_acc", "alert_compression", "n_alerts", "n_incidents",
+    "classification_acc", "alert_compression", "n_alerts", "n_incidents", "benign_paged",
 )
 FAULT_METRICS = ("recall", "mttd_min", "rca_top1", "rca_top3", "classification_acc")
 
@@ -87,6 +91,8 @@ class DayScore:
     n_incidents: int
     n_matched_incidents: int
     faults: list[FaultOutcome]
+    n_benign: int = 0
+    n_benign_paged: int = 0  # benign events that produced an unmatched (false-positive) incident
 
 
 @dataclass
@@ -107,24 +113,47 @@ class EvalReport:
         return {k: (round(v, 3) if isinstance(v, float) else v) for k, v in asdict(self).items()}
 
 
+def _overlaps(inc: Incident, f: Fault) -> bool:
+    return inc.start <= f.end + POST_SLACK and inc.end >= f.start - PRE_SLACK
+
+
 def _matches(inc: Incident, f: Fault, topo: Topology) -> bool:
-    overlaps = inc.start <= f.end + POST_SLACK and inc.end >= f.start - PRE_SLACK
+    """Precision: is this page explained by the fault (any node in its blast radius, in its time window)?"""
     blast = {f.root, *topo.downstream(f.root)}
-    return overlaps and any(n in blast for n in inc.nodes)
+    return _overlaps(inc, f) and any(n in blast for n in inc.nodes)
+
+
+def _detects(inc: Incident, f: Fault, topo: Topology, silenced: set[str]) -> bool:
+    """Recall: does this incident carry evidence of *this* fault? An alert on its root in the window, or,
+    if the fault knocked the root off the network, any alert in its blast radius. Without this, a
+    concurrent fault would get credit for its neighbour's incident through shared downstream nodes."""
+    if not _overlaps(inc, f):
+        return False
+    if any(a.node == f.root and a.start <= f.end + POST_SLACK and a.end >= f.start - PRE_SLACK for a in inc.alerts):
+        return True
+    return f.fault_id in silenced and _matches(inc, f, topo)
+
+
+def _hits_benign(inc: Incident, b: BenignEvent) -> bool:
+    return b.node in inc.nodes and inc.start <= b.end + POST_SLACK and inc.end >= b.start - PRE_SLACK
 
 
 def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | None = None) -> DayScore:
     topo = topo or Topology.default()
     incidents = result.incidents
-    matched_incidents: set[str] = set()
+    silenced = {b.cause for b in sim.blackouts if b.cause}
+    matched_incidents = {i.incident_id for i in incidents if any(_matches(i, f, topo) for f in sim.faults)}
     outcomes: list[FaultOutcome] = []
     for f in sim.faults:
-        hits = [i for i in incidents if _matches(i, f, topo)]
-        matched_incidents.update(i.incident_id for i in hits)
+        hits = [i for i in incidents if _detects(i, f, topo, silenced)]
         if not hits:
             outcomes.append(FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False))
             continue
-        ttd = float(max(0, min(i.start for i in hits) - f.start))
+        # Time to the first page consistent with this fault: an alert in its blast radius that is active in
+        # its window. Not the incident start, which may belong to a concurrent fault that paged earlier.
+        blast = {f.root, *topo.downstream(f.root)}
+        first = min(max(a.start, f.start) for i in hits for a in i.alerts if a.node in blast and a.end >= f.start - PRE_SLACK)
+        ttd = float(first - f.start)
         # judge RCA on the biggest matching incident (the one on-call would work)
         main = max(hits, key=lambda i: len(i.alerts))
         cands = [c["node"] for c in main.root_causes]
@@ -136,7 +165,9 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
                 cls_ok=(main.runbook or {}).get("fault_kind") == f.kind,
             )
         )
-    return DayScore(sim.seed, len(result.alerts), len(incidents), len(matched_incidents), outcomes)
+    false_pos = [i for i in incidents if i.incident_id not in matched_incidents]
+    paged = sum(any(_hits_benign(i, b) for i in false_pos) for b in sim.benign)
+    return DayScore(sim.seed, len(result.alerts), len(incidents), len(matched_incidents), outcomes, len(sim.benign), paged)
 
 
 # --------------------------------------------------------------------------
@@ -163,6 +194,8 @@ def _day_counts(day: DayScore, keep=None) -> dict[str, float]:
         "incidents": day.n_incidents,
         "matched": day.n_matched_incidents,
         "alerts": day.n_alerts,
+        "benign": day.n_benign,
+        "benign_paged": day.n_benign_paged,
     }
 
 
@@ -181,6 +214,7 @@ def _metrics(c: dict) -> dict:
         "alert_compression": _ratio(c["alerts"], c["incidents"]),
         "n_alerts": _ratio(c["alerts"], c["days"]),
         "n_incidents": _ratio(c["incidents"], c["days"]),
+        "benign_paged": _ratio(c["benign_paged"], c["benign"]),
     }
 
 
@@ -235,6 +269,30 @@ def _with_ci(days: list[DayScore], weights: np.ndarray, metrics: tuple[str, ...]
     return out
 
 
+def summarize_scenarios(
+    days: dict[str, dict[str, list[DayScore]]], split: str | None = None, seeds=None, minutes: int | None = None
+) -> dict:
+    """`days[scenario][config]` -> one report covering every scenario."""
+    per = {name: summarize(d) for name, d in days.items()}
+    first = next(iter(per.values()))
+    return {
+        "split": split,
+        "seeds": list(seeds) if seeds is not None else None,
+        "n_days": first["n_days"],
+        "minutes": minutes,
+        "ci": first["ci"],
+        "scenarios": {
+            name: {"settings": SCENARIOS.get(name, {}), "faults_per_day": _faults_per_day(days[name]), "configs": r["configs"]}
+            for name, r in per.items()
+        },
+    }
+
+
+def _faults_per_day(days_by_config: dict[str, list[DayScore]]) -> float:
+    days = next(iter(days_by_config.values()))
+    return round(sum(len(d.faults) for d in days) / max(len(days), 1), 2)
+
+
 def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = None, seeds=None, minutes: int | None = None) -> dict:
     """Pooled metrics with 95% CIs, overall and per fault kind / intensity bucket, for each config."""
     n_days = len(next(iter(days_by_config.values())))
@@ -263,18 +321,24 @@ def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = Non
 # --------------------------------------------------------------------------
 # Benchmark runner
 # --------------------------------------------------------------------------
-def _run_seed(task: tuple[int, int, dict[str, PipelineConfig]]) -> dict[str, DayScore]:
-    seed, minutes, configs = task
+def _run_seed(task: tuple[int, int, dict[str, PipelineConfig], str]) -> dict[str, DayScore]:
+    seed, minutes, configs, scenario = task
     topo = Topology.default()
-    sim = simulate(topo, minutes=minutes, seed=seed)
+    sim = simulate(topo, minutes=minutes, seed=seed, **SCENARIOS[scenario])
     cache: dict = {}  # detector scores shared by every config on this simulated day
     return {name: score_day(sim, run_pipeline(sim, topo, cfg, cache=cache), topo) for name, cfg in configs.items()}
 
 
-def run_benchmark(seeds, minutes: int = 1440, configs: dict[str, PipelineConfig] | None = None, jobs: int | None = None) -> dict[str, list[DayScore]]:
-    """Simulate each seed once, run every config on it, and return per-day scores per config."""
+def run_benchmark(
+    seeds,
+    minutes: int = 1440,
+    configs: dict[str, PipelineConfig] | None = None,
+    jobs: int | None = None,
+    scenario: str = "clean",
+) -> dict[str, list[DayScore]]:
+    """Simulate each seed once under `scenario`, run every config on it, and return per-day scores per config."""
     configs = configs or ABLATION
-    tasks = [(int(s), minutes, configs) for s in seeds]
+    tasks = [(int(s), minutes, configs, scenario) for s in seeds]
     jobs = min(jobs or os.cpu_count() or 1, len(tasks))
     if jobs > 1:
         with ProcessPoolExecutor(max_workers=jobs) as pool:
@@ -291,6 +355,7 @@ _LABELS = {
     "precision": "precision", "recall": "recall", "f1": "F1", "mttd_min": "MTTD (min)",
     "rca_top1": "RCA top-1", "rca_top3": "RCA top-3", "classification_acc": "runbook match",
     "alert_compression": "alerts/incident", "n_alerts": "alerts/day", "n_incidents": "incidents/day",
+    "benign_paged": "benign paged",
 }
 
 
@@ -314,6 +379,18 @@ def _table(rows: dict[str, dict], metrics: tuple[str, ...], first_col: str, with
     return lines
 
 
+def _config_sections(configs: dict, level: str) -> list[str]:
+    lines = [f"{level} Overall", "", *_table({n: c["overall"] for n, c in configs.items()}, OVERALL_METRICS, "config")]
+    for name in ("static_baseline", "sentinel"):
+        if name not in configs:
+            continue
+        cfg = configs[name]
+        lines += ["", f"{level} {name}: by fault kind", "", *_table(cfg["by_kind"], FAULT_METRICS, "fault kind", with_n=True)]
+        lines += ["", f"{level} {name}: by intensity (subtle < {SUBTLE_BELOW}, hard >= {SUBTLE_BELOW})", ""]
+        lines += _table(cfg["by_intensity"], FAULT_METRICS, "intensity", with_n=True)
+    return lines
+
+
 def to_markdown(report: dict) -> str:
     split = report.get("split") or "custom"
     seeds = report.get("seeds") or []
@@ -325,15 +402,11 @@ def to_markdown(report: dict) -> str:
         f"{report['n_days']} simulated days ({seed_txt}), {report.get('minutes') or '?'} min each. "
         f"Values are pooled over all days; brackets are the {report['ci']}.",
         "",
-        "## Overall",
-        "",
-        *_table({n: c["overall"] for n, c in report["configs"].items()}, OVERALL_METRICS, "config"),
     ]
-    for name in ("static_baseline", "sentinel"):
-        if name not in report["configs"]:
-            continue
-        cfg = report["configs"][name]
-        lines += ["", f"## {name}: by fault kind", "", *_table(cfg["by_kind"], FAULT_METRICS, "fault kind", with_n=True)]
-        lines += ["", f"## {name}: by intensity (subtle < {SUBTLE_BELOW}, hard >= {SUBTLE_BELOW})", ""]
-        lines += _table(cfg["by_intensity"], FAULT_METRICS, "intensity", with_n=True)
-    return "\n".join(lines) + "\n"
+    if "scenarios" not in report:
+        return "\n".join(lines + _config_sections(report["configs"], "##")) + "\n"
+    for name, sc in report["scenarios"].items():
+        settings = ", ".join(f"{k}={v}" for k, v in sc["settings"].items()) or "one fault at a time, complete telemetry"
+        lines += [f"## Scenario: {name}", "", f"Settings: {settings}. Faults per day: {sc['faults_per_day']}.", ""]
+        lines += _config_sections(sc["configs"], "###") + [""]
+    return "\n".join(lines).rstrip() + "\n"

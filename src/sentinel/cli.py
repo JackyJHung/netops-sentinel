@@ -6,9 +6,9 @@ import argparse
 import json
 from pathlib import Path
 
-from .evaluation import SPLITS, evaluate, run_benchmark, summarize, to_markdown
+from .evaluation import SPLITS, evaluate, run_benchmark, summarize_scenarios, to_markdown
 from .pipeline import PipelineConfig, run_pipeline
-from .simulator import simulate
+from .simulator import SCENARIOS, simulate
 from .topology import Topology
 
 
@@ -18,7 +18,7 @@ def _config(name: str) -> PipelineConfig:
 
 def cmd_run(args) -> None:
     topo = Topology.default()
-    sim = simulate(topo, minutes=args.minutes, seed=args.seed)
+    sim = simulate(topo, minutes=args.minutes, seed=args.seed, **SCENARIOS[args.scenario])
     result = run_pipeline(sim, topo, _config(args.config))
     print(f"Simulated {args.minutes} min, {len(sim.faults)} injected faults, {len(sim.logs)} log lines")
     print(f"{len(result.alerts)} alerts -> {len(result.incidents)} incidents\n")
@@ -29,14 +29,20 @@ def cmd_run(args) -> None:
                 print(f"     - {step}")
     print("\nGround truth:")
     for f in sim.faults:
-        print(f"  {f.fault_id} {f.kind:<20} root={f.root:<12} {sim.timestamp(f.start):%H:%M}-{sim.timestamp(f.end):%H:%M} intensity={f.intensity}")
+        print(f"  {f.fault_id:<5} {f.kind:<20} root={f.root:<12} {sim.timestamp(f.start):%H:%M}-{sim.timestamp(f.end):%H:%M} intensity={f.intensity}")
+    for b in sim.benign:
+        print(f"  {b.event_id:<5} benign {b.kind:<13} node={b.node:<12} {sim.timestamp(b.start):%H:%M}-{sim.timestamp(b.end):%H:%M}")
+    for b in sim.blackouts:
+        cause = f"caused by {b.cause}" if b.cause else "random"
+        print(f"  blackout {b.node:<12} {sim.timestamp(b.start):%H:%M}-{sim.timestamp(b.end):%H:%M} ({cause})")
     print("\nScore:", json.dumps(evaluate(sim, result, topo).to_dict(), indent=2))
 
 
 def cmd_eval(args) -> None:
     seeds = SPLITS[args.split][: args.seeds] if args.seeds else SPLITS[args.split]
-    days = run_benchmark(seeds, minutes=args.minutes, jobs=args.jobs)
-    report = summarize(days, split=args.split, seeds=seeds, minutes=args.minutes)
+    scenarios = list(SCENARIOS) if args.scenario == "all" else [args.scenario]
+    days = {sc: run_benchmark(seeds, minutes=args.minutes, jobs=args.jobs, scenario=sc) for sc in scenarios}
+    report = summarize_scenarios(days, split=args.split, seeds=seeds, minutes=args.minutes)
     md = to_markdown(report)
     print(md)
     out = Path(args.out)
@@ -49,7 +55,7 @@ def cmd_eval(args) -> None:
 
 def cmd_export(args) -> None:
     """Write a simulated day to disk (metrics CSV, raw logs, ground truth) for use in other tools."""
-    sim = simulate(minutes=args.minutes, seed=args.seed)
+    sim = simulate(minutes=args.minutes, seed=args.seed, **SCENARIOS[args.scenario])
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     flat = sim.metrics.copy()
@@ -58,7 +64,9 @@ def cmd_export(args) -> None:
     flat.to_csv(out / "metrics.csv", index=False)
     (out / "syslog.log").write_text("\n".join(ln.render(sim.start_time) for ln in sim.logs) + "\n")
     (out / "faults.json").write_text(json.dumps([f.to_dict() for f in sim.faults], indent=2))
-    print(f"Wrote metrics.csv, syslog.log, faults.json to {out}")
+    truth = {"benign": [b.to_dict() for b in sim.benign], "blackouts": [b.to_dict() for b in sim.blackouts]}
+    (out / "benign_and_blackouts.json").write_text(json.dumps(truth, indent=2))
+    print(f"Wrote metrics.csv, syslog.log, faults.json, benign_and_blackouts.json to {out}")
 
 
 def cmd_serve(args) -> None:
@@ -75,12 +83,14 @@ def main(argv=None) -> None:
     r.add_argument("--seed", type=int, default=42)
     r.add_argument("--minutes", type=int, default=1440)
     r.add_argument("--config", choices=["sentinel", "static"], default="sentinel")
+    r.add_argument("--scenario", choices=list(SCENARIOS), default="clean")
     r.add_argument("-v", "--verbose", action="store_true", help="print runbook steps")
     r.set_defaults(func=cmd_run)
 
     e = sub.add_parser("eval", help="benchmark the ablation ladder on a seed split, with 95% CIs")
     e.add_argument("--split", choices=sorted(SPLITS), default="test", help="tune: seeds 0-9 (development); test: 100-129 (held out)")
     e.add_argument("--seeds", type=int, default=None, help="only use the first N seeds of the split (quick runs)")
+    e.add_argument("--scenario", choices=[*SCENARIOS, "all"], default="all", help="clean, hard, or both (default)")
     e.add_argument("--jobs", type=int, default=None, help="worker processes (default: CPU count)")
     e.add_argument("--minutes", type=int, default=1440)
     e.add_argument("--out", default="reports")
@@ -90,6 +100,7 @@ def main(argv=None) -> None:
     x.add_argument("--seed", type=int, default=42)
     x.add_argument("--minutes", type=int, default=1440)
     x.add_argument("--out", default="data")
+    x.add_argument("--scenario", choices=list(SCENARIOS), default="clean")
     x.set_defaults(func=cmd_export)
 
     s = sub.add_parser("serve", help="start the API and dashboard")
