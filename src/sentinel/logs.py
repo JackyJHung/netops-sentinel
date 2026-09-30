@@ -6,10 +6,21 @@ become templates like
     %LINK-3-UPDOWN: Interface GigabitEthernet<*>, changed state to <*>
 so thousands of lines collapse into a few dozen event types whose *rates*
 can be monitored.
+
+Two kinds of log alert:
+  * new event type - a warning+ template never seen during warm-up
+  * burst / surge  - a known template far above its warm-up rate
+
+A burst test runs on every (node, template) series every minute, about 1,440
+times a day, so a fixed "3 lines in 5 minutes" floor fires by chance on quiet
+templates. The burst threshold is therefore also the smallest count whose
+Poisson tail probability, at the template's own baseline rate, fits a daily
+false-alarm budget (`false_bursts_per_day` per series).
 """
 
 from __future__ import annotations
 
+import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -26,6 +37,21 @@ _MASKS = [
     (re.compile(r"(?<![A-Za-z]-)\b\d+(?:\.\d+)?(?=ms\b|%|\b)"), "<NUM>"),
 ]
 _SYSLOG_LEVEL = re.compile(r"^%[A-Z0-9_]+-(\d)-[A-Z0-9_]+:")
+
+
+WINDOWS_PER_DAY = 1440  # the rolling-count test is re-run every minute
+
+
+def poisson_threshold(lam: float, alpha: float) -> int:
+    """Smallest k with P(X >= k) <= alpha for X ~ Poisson(lam)."""
+    term = math.exp(-lam)  # P(X = 0)
+    tail = 1.0 - term  # P(X >= 1)
+    k = 1
+    while tail > alpha:
+        term *= lam / k  # P(X = k)
+        tail -= term  # P(X >= k + 1)
+        k += 1
+    return k
 
 
 def mask(message: str) -> str:
@@ -114,9 +140,15 @@ def detect_log_anomalies(
     burst_factor: float = 5.0,
     min_count: int = 3,
     start_id: int = 0,
+    false_bursts_per_day: float | None = 0.01,
 ) -> list[Alert]:
     """Flag (node, template) pairs that are new since warm-up and warning+,
-    or whose rolling count bursts well above their warm-up rate."""
+    or whose rolling count bursts well above their warm-up rate.
+
+    A burst must be big (`burst_factor` x baseline, at least `min_count`) and, unless
+    `false_bursts_per_day` is None, improbable: its count must reach the Poisson threshold
+    for the template's baseline at alpha = false_bursts_per_day / WINDOWS_PER_DAY."""
+    alpha = false_bursts_per_day / WINDOWS_PER_DAY if false_bursts_per_day else None
     counts: dict[tuple[str, str], np.ndarray] = defaultdict(lambda: np.zeros(minutes))
     for p in parsed:
         counts[(p.node, p.template_id)][p.t] += 1
@@ -132,13 +164,16 @@ def detect_log_anomalies(
                 continue
             mask = rolling >= min(min_count, 2)
             reason = "new event type"
-        elif tpl.severity == "info":
-            # routine chatter: only a large surge is interesting
-            mask = rolling >= max(4 * min_count, 3 * burst_factor * base_rate)
-            reason = f"surge vs baseline {base_rate:.2f}/{window}min"
         else:
-            mask = rolling >= max(min_count, burst_factor * base_rate)
-            reason = f"burst vs baseline {base_rate:.2f}/{window}min"
+            significant = poisson_threshold(base_rate, alpha) if alpha else 0
+            if tpl.severity == "info":
+                # routine chatter: only a large surge is interesting
+                need = max(4 * min_count, 3 * burst_factor * base_rate, significant)
+                reason = f"surge vs baseline {base_rate:.2f}/{window}min"
+            else:
+                need = max(min_count, burst_factor * base_rate, significant)
+                reason = f"burst vs baseline {base_rate:.2f}/{window}min"
+            mask = rolling >= need
         mask[:warmup] = False
         for a, b in intervals(mask, min_len=2, max_gap=window):
             peak = float(rolling[a:b].max())

@@ -58,10 +58,11 @@ ABLATION: dict[str, PipelineConfig] = {
     "robust_z+ewma": PipelineConfig(detectors=("robust_z", "ewma"), use_logs=False, **_OFF),
     "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False, **_OFF),
     "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False, **_OFF),
-    "+log mining": PipelineConfig(**_OFF),
-    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False),
-    "+silent nodes": PipelineConfig(multi_root=False),
-    "sentinel": PipelineConfig(),  # + multi-root RCA
+    "+log mining": PipelineConfig(**_OFF, log_false_bursts_per_day=None),
+    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False, log_false_bursts_per_day=None),
+    "+silent nodes": PipelineConfig(multi_root=False, log_false_bursts_per_day=None),
+    "+multi-root RCA": PipelineConfig(log_false_bursts_per_day=None),
+    "sentinel": PipelineConfig(),  # + calibrated log bursts
 }
 
 OVERALL_METRICS = (

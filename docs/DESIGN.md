@@ -141,3 +141,43 @@ All choices in this milestone were made on the tuning split. The test split was 
 
 - MTTD rises 1.7 to 1.8 min (within the CI): when a group is split, an early alert in a fault's blast radius can land in the partner's incident, which no longer counts as this fault's first page.
 - Runbook match dips when silent nodes are added (0.78 to 0.75) and recovers with multi-root. Checked on tune: the 3 faults that lose their runbook all get `RB-GENERIC`, because a silent root has no alerts to match a runbook on. One is the fault's own silent root; in the other two, a concurrent silent root is the incident's only root until multi-root gives the second fault its own runbook. Worth fixing by inferring the runbook for a silent network device from its children's symptoms.
+
+## Milestone 4: log-burst false positives
+
+### D19. Diagnosis: one template, one rule, a multiple-testing problem
+
+`scripts/diagnose_logs.py` labels every log alert as fault-related, benign-related, or false, by template and trigger. Tuning split, full milestone 3 pipeline:
+
+| Template | Trigger | Fault-related | False | False but "corroborated" by a metric alert |
+|---|---|---|---|---|
+| `WARN retrying connection to metrics-exporter attempt=<NUM>` | burst of known template | 3 clean / 3 hard | 6 clean / 6 hard | 0 clean / 2 hard |
+| 11 other templates (UPDOWN, CPUHOG, OOM, GC pause, slow query, upstream timeout, ...) | new event type | all | 0 | n/a |
+
+- Every false log alert came from one routine template through one rule. On test the pattern is identical: 35 (clean) and 33 (hard) false alerts, all this template, all "burst". Even its "fault-related" alerts are coincidence: a chance burst on a node that happens to be in a fault's blast radius.
+- **Root cause.** The burst rule fired at `max(3, 5 x baseline)` lines per 5 min. This template runs at 0.08 to 0.39 lines per 5 min, so the floor of 3 binds. P(X >= 3) at a rate of 0.2 is about 0.1%, but the test re-runs every minute on every (node, template) series, about 1,440 times a day each, so chance bursts are expected every few days per series. The threshold ignored both the template's own variance and the number of tests.
+- **What log mining is actually needed for** (same script): detecting one link flap per scenario that is only visible through `%LINK-3-UPDOWN`, and the right runbook for 23 hard-scenario faults and 2 clean ones on the tuning split (OOM, GC pause, CPUHOG, UPDOWN, slow query, worker pool saturated). All of those are "new event type" alerts, so the fix must not touch that path.
+
+### D20. Fix: a burst must also be improbable, at a fixed false-alarm budget
+
+- A known template now bursts only if its 5-min count also reaches the smallest k with P(X >= k) <= alpha, X ~ Poisson(template's warm-up rate), alpha = budget / 1,440 tests per day. The old size requirement (at least 3, at least 5x baseline) stays: significance and effect size, because real logs are burstier than Poisson.
+- **Budget chosen up front, not tuned:** 0.01 false bursts per (node, template) per day, about one per series per quarter. The result does not depend on it: 0.1, 0.01, and 0.001 give identical tuning-split results (the chance bursts are far below any of them).
+- A 30-day synthetic stream of this template (unit test) gets 4 chance bursts under the old rule and at most 1 under the new one; a real burst of 15 lines in 5 min still alerts.
+- **Tried: metric corroboration** (a burst only pages if a metric alert on the same or a dependency-related node overlaps it, +-10 min). Same precision on tune. Rejected: it couples the log path to the metric path, it would suppress a real log-only burst, and it keeps false bursts that coincide with real faults (2 of 6 in the hard scenario). Calibration plus corroboration gave the same numbers as calibration alone.
+- **Not tried: per-template seasonality.** The simulator's log rates are flat, so there is no seasonality to model and no way to measure the benefit here. It would matter on real data (batch jobs, business hours).
+
+### D21. The one RCA hit calibration "lost" was luck, and it exposed a fragility
+
+- Tune, hard: RCA top-1 0.978 to 0.971 (one fault). Traced: a chance `WARN retrying` burst on `web-1` sat inside a merged incident (core router CPU fault plus a `cache-1` memory leak). Because `web-1` is downstream of `cache-1`, that false alert raised `cache-1`'s "explains other alerts" score over the 40% floor for declaring a second root. Without the false alert, `cache-1` is not declared, even though its memory symptoms cannot come from the router.
+- So the calibrated rule is right, and the declaration rule is fragile: a candidate with local (non-cascading) symptoms should not need downstream alerts to clear the score floor. Left as is in this milestone so its numbers stay attributable; it is a candidate follow-up with the extra-root precision metric as the guard.
+
+### D22. Milestone 4 before and after (test split)
+
+| | Precision | Recall | MTTD (min) | RCA top-1 | Runbook match | False-positive incidents |
+|---|---|---|---|---|---|---|
+| Clean, before | 0.90 [0.87, 0.93] | 1.00 | 2.0 | 1.00 | 1.00 | 32 of 311 |
+| Clean, after | 1.00 [1.00, 1.00] | 1.00 | 2.0 | 1.00 | 1.00 | 0 of 275 |
+| Hard, before | 0.76 [0.71, 0.80] | 0.99 | 1.8 | 0.96 | 0.83 | 109 of 448 |
+| Hard, after | 0.80 [0.76, 0.84] | 0.99 | 1.8 | 0.97 | 0.83 | 83 of 417 |
+
+- The 9-point precision cost of log mining on clean days is fully recovered, while keeping its recall and runbook gains over the metric-only pipeline.
+- Hard scenario: all 83 remaining false-positive incidents are benign events (one per benign event). That is milestone 5's problem.

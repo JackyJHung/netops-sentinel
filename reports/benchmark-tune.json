@@ -1819,7 +1819,7 @@
             }
           }
         },
-        "sentinel": {
+        "+multi-root RCA": {
           "counts": {
             "faults": 89,
             "detected": 89,
@@ -1881,6 +1881,263 @@
               "mean": 9.5,
               "lo": 8.9,
               "hi": 10.0
+            },
+            "benign_paged": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "wrong_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "same_branch_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "extra_root_precision": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 29,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "link_flap": {
+              "n_faults": 19,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.263,
+                "lo": 0.0,
+                "hi": 4.8
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.947,
+                "lo": 0.889,
+                "hi": 1.0
+              }
+            },
+            "memory_leak": {
+              "n_faults": 21,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 6.952,
+                "lo": 6.2,
+                "hi": 8.286
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 20,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 28,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.25,
+                "lo": 1.765,
+                "hi": 5.738
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.964,
+                "lo": 0.897,
+                "hi": 1.0
+              }
+            },
+            "hard": {
+              "n_faults": 61,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.295,
+                "lo": 0.625,
+                "hi": 2.088
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          }
+        },
+        "sentinel": {
+          "counts": {
+            "faults": 89,
+            "detected": 89,
+            "incidents": 89,
+            "matched": 89,
+            "alerts": 444,
+            "benign": 0,
+            "pairs_unrelated": 0,
+            "pairs_same": 0,
+            "extra_roots": 0
+          },
+          "overall": {
+            "precision": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "recall": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "mttd_min": {
+              "mean": 1.91,
+              "lo": 1.11,
+              "hi": 3.058
+            },
+            "rca_top1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 0.989,
+              "lo": 0.967,
+              "hi": 1.0
+            },
+            "alert_compression": {
+              "mean": 4.989,
+              "lo": 4.534,
+              "hi": 5.473
+            },
+            "n_alerts": {
+              "mean": 44.4,
+              "lo": 39.297,
+              "hi": 49.6
+            },
+            "n_incidents": {
+              "mean": 8.9,
+              "lo": 8.5,
+              "hi": 9.3
             },
             "benign_paged": {
               "mean": null,
@@ -3887,7 +4144,7 @@
             }
           }
         },
-        "sentinel": {
+        "+multi-root RCA": {
           "counts": {
             "faults": 138,
             "detected": 137,
@@ -4140,6 +4397,263 @@
                 "mean": 0.792,
                 "lo": 0.721,
                 "hi": 0.857
+              }
+            }
+          }
+        },
+        "sentinel": {
+          "counts": {
+            "faults": 138,
+            "detected": 137,
+            "incidents": 132,
+            "matched": 101,
+            "alerts": 712,
+            "benign": 31,
+            "pairs_unrelated": 13,
+            "pairs_same": 36,
+            "extra_roots": 20
+          },
+          "overall": {
+            "precision": {
+              "mean": 0.765,
+              "lo": 0.697,
+              "hi": 0.836
+            },
+            "recall": {
+              "mean": 0.993,
+              "lo": 0.977,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 0.864,
+              "lo": 0.816,
+              "hi": 0.909
+            },
+            "mttd_min": {
+              "mean": 1.912,
+              "lo": 1.374,
+              "hi": 2.504
+            },
+            "rca_top1": {
+              "mean": 0.971,
+              "lo": 0.95,
+              "hi": 0.992
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 0.81,
+              "lo": 0.744,
+              "hi": 0.867
+            },
+            "alert_compression": {
+              "mean": 5.394,
+              "lo": 4.899,
+              "hi": 5.823
+            },
+            "n_alerts": {
+              "mean": 71.2,
+              "lo": 67.0,
+              "hi": 75.202
+            },
+            "n_incidents": {
+              "mean": 13.2,
+              "lo": 12.5,
+              "hi": 14.1
+            },
+            "benign_paged": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "wrong_merge": {
+              "mean": 0.0,
+              "lo": 0.0,
+              "hi": 0.0
+            },
+            "same_branch_merge": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "extra_root_precision": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 40,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.175,
+                "lo": 0.069,
+                "hi": 0.278
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.775,
+                "lo": 0.644,
+                "hi": 0.921
+              }
+            },
+            "link_flap": {
+              "n_faults": 30,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.033,
+                "lo": 0.0,
+                "hi": 2.379
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.867,
+                "lo": 0.781,
+                "hi": 1.0
+              }
+            },
+            "memory_leak": {
+              "n_faults": 33,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 6.788,
+                "lo": 5.903,
+                "hi": 7.63
+              },
+              "rca_top1": {
+                "mean": 0.939,
+                "lo": 0.865,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.879,
+                "lo": 0.719,
+                "hi": 0.975
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 35,
+              "recall": {
+                "mean": 0.971,
+                "lo": 0.903,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 0.941,
+                "lo": 0.857,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.735,
+                "lo": 0.594,
+                "hi": 0.844
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 41,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.0,
+                "lo": 1.636,
+                "hi": 4.958
+              },
+              "rca_top1": {
+                "mean": 0.951,
+                "lo": 0.889,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.878,
+                "lo": 0.767,
+                "hi": 1.0
+              }
+            },
+            "hard": {
+              "n_faults": 97,
+              "recall": {
+                "mean": 0.99,
+                "lo": 0.968,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.448,
+                "lo": 1.01,
+                "hi": 1.929
+              },
+              "rca_top1": {
+                "mean": 0.979,
+                "lo": 0.95,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.781,
+                "lo": 0.714,
+                "hi": 0.842
               }
             }
           }

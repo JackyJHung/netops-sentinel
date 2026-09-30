@@ -18,7 +18,7 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 
 - `src/sentinel/simulator.py`: telemetry, syslog, fault injection (`Fault` has kind, root, start, duration, intensity); `SCENARIOS` (clean, hard): concurrent faults, NaN gaps/blackouts, benign events, each on its own RNG stream
 - `src/sentinel/detection.py`: static, robust z + EWMA (must agree), Isolation Forest on residuals, saturation forecast -> `Alert`
-- `src/sentinel/logs.py`: Drain-style template miner, new/burst log alerts
+- `src/sentinel/logs.py`: Drain-style template miner, new-event-type and burst alerts; bursts must pass a Poisson tail test at a daily false-alarm budget
 - `src/sentinel/correlation.py`: union-find grouping by time window + topology, then split at origins (unrelated branches, separate onsets); `detect_silences` for nodes that went dark -> `Incident`
 - `src/sentinel/rca.py`: explain / earliness / intensity scoring over alerting and silent nodes; declares multiple roots (unrelated branch, or local CPU/memory symptoms)
 - `src/sentinel/runbooks.py` + `data/runbooks.yaml`: runbook matching and summaries
@@ -27,6 +27,7 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 - `data/topology.yaml`: 10-node dependency graph (`depends_on` points upstream)
 - `docs/DESIGN.md`: decision log (what was tried, numbers, what was kept and why)
 - `scripts/diagnose.py`: attribute false-positive incidents, RCA misses, and wrong merges to causes (tune split by default)
+- `scripts/diagnose_logs.py`: label every log alert (fault / benign / false) by template and trigger; which faults need log mining
 - `scripts/readme_tables.py --update-readme`: regenerate the README results tables from `reports/benchmark-test.json` (never type numbers by hand)
 
 ## Conventions
@@ -40,16 +41,15 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 
 ## Current state (Sep 30, 2026)
 
-- Milestones 1-3 done: honest evaluation, hard scenario, correlation/RCA for concurrent faults and silent nodes.
-- Test split, full pipeline. Clean: P 0.90 / R 1.00 / MTTD 2.0 / RCA top-1 1.00. Hard: P 0.76 / R 0.99 / MTTD 1.8 / RCA top-1 0.96 / top-3 1.00 / runbook 0.83 / wrong merges 0.06 / benign paged 1.00.
-- RCA is scored per fault with a filtered rank (DESIGN D14); the old per-incident metric would say 0.62 for the milestone 2 pipeline.
-- False positives (tune, hard): 31 of 35 benign events, 4 log-only bursts of `WARN retrying connection to metrics-exporter` (all 6 clean false positives are that template).
-- Known weaknesses: benign changes always page; log-burst FPs; same-branch concurrent faults with only cascading symptoms rank 2nd-3rd; silent roots get a generic runbook; EWMA absorbs slow ramps (DESIGN D5); small sample of unrelated concurrent pairs (13 tune, 64 test).
+- Milestones 1-4 done: honest evaluation, hard scenario, correlation/RCA for concurrent faults and silent nodes, calibrated log bursts.
+- Test split, full pipeline. Clean: P 1.00 / R 1.00 / MTTD 2.0 / RCA top-1 1.00 / runbook 1.00. Hard: P 0.80 / R 0.99 / MTTD 1.8 / RCA top-1 0.97 / top-3 1.00 / runbook 0.83 / wrong merges 0.06 / benign paged 1.00.
+- RCA is scored per fault with a filtered rank (DESIGN D14).
+- Every remaining false positive (hard) is a benign event: 83 of 83 on test.
+- Known weaknesses: benign changes always page; multi-root declaration needs downstream alerts to clear its score floor even with local CPU/memory symptoms (DESIGN D21); same-branch concurrent faults with only cascading symptoms rank 2nd-3rd; silent roots get a generic runbook; EWMA absorbs slow ramps (D5); Poisson assumption for log rates; small sample of unrelated concurrent pairs (13 tune, 64 test).
 
 ## Next steps (roadmap order)
 
-1. Cut log-burst false positives at the root cause (milestone 4)
-2. Change-event (deploy/config push) correlation as an RCA signal (milestone 5)
-3. Streaming mode (Kafka or Redis Streams) with online detectors
-4. Prometheus / OpenTelemetry ingestion
-5. LLM-drafted incident summaries grounded in the alert timeline
+1. Change-event (deploy/config push) correlation as an RCA signal (milestone 5)
+2. Streaming mode (Kafka or Redis Streams) with online detectors
+3. Prometheus / OpenTelemetry ingestion
+4. LLM-drafted incident summaries grounded in the alert timeline

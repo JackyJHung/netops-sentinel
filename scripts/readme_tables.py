@@ -18,7 +18,8 @@ LABELS = {
     "+log mining": "+ Log mining",
     "+incident splitting": "+ Incident splitting",
     "+silent nodes": "+ Silent-node evidence",
-    "sentinel": "+ Multi-root RCA (full)",
+    "+multi-root RCA": "+ Multi-root RCA",
+    "sentinel": "+ Calibrated log bursts (full)",
 }
 HEADERS = {
     "precision": "Precision", "recall": "Recall", "f1": "F1", "mttd_min": "MTTD (min)", "rca_top1": "RCA top-1",

@@ -21,6 +21,7 @@ SINGLE_ROOT_CORRELATION = {"split_incidents": False, "silence_evidence": False, 
 class PipelineConfig:
     detectors: tuple[str, ...] = ("robust_z", "ewma", "iforest", "forecast")
     use_logs: bool = True
+    log_false_bursts_per_day: float | None = 0.01  # burst false-alarm budget per (node, template); None = fixed floor only
     correlation_window: int = 10
     max_hops: int = 2
     min_alert_len: int = 3
@@ -65,10 +66,15 @@ def run_pipeline(
     alerts = list(cache[key])
     miner = None
     if config.use_logs:
-        if "logs" not in cache:
-            parsed, log_miner = parse_logs(sim.logs)
-            cache["logs"] = (log_miner, detect_log_anomalies(parsed, log_miner, sim.minutes, sim.warmup))
-        miner, log_alerts = cache["logs"]
+        if "parsed_logs" not in cache:
+            cache["parsed_logs"] = parse_logs(sim.logs)
+        parsed, miner = cache["parsed_logs"]
+        key = ("log_alerts", config.log_false_bursts_per_day)
+        if key not in cache:
+            cache[key] = detect_log_anomalies(
+                parsed, miner, sim.minutes, sim.warmup, false_bursts_per_day=config.log_false_bursts_per_day
+            )
+        log_alerts = cache[key]
         alerts += log_alerts
 
     silences = detect_silences(sim.metrics, config.silence_min) if config.silence_evidence else []
