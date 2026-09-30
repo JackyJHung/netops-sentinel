@@ -18,8 +18,8 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check src tests
       - run: pytest -q
-      - name: Benchmark vs static baseline
-        run: sentinel eval --seeds 3 --out reports
+      - name: Benchmark smoke test (tuning split only; held-out numbers are for reporting)
+        run: sentinel eval --split tune --seeds 3 --out reports
       - uses: actions/upload-artifact@v4
         with:
           name: benchmark-${{ matrix.python-version }}

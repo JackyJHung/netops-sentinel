@@ -34,26 +34,33 @@ flowchart LR
 | Correlate | `correlation.py` | Groups alerts that overlap in time and are topologically related (union-find). |
 | Root cause | `rca.py` | Scores each alerting node by how many other alerting nodes sit downstream of it, how early it alerted, and how loud it is. Returns a ranked list with reasons. |
 | Remediate | `runbooks.py`, `data/runbooks.yaml` | Matches metric signals and log keywords on the root node to a runbook with steps and an auto-remediation hook. |
-| Measure | `evaluation.py` | Precision, recall, F1, MTTD, RCA top-1/top-3, runbook classification accuracy, alert compression. |
+| Measure | `evaluation.py` | Precision, recall, F1, MTTD, RCA top-1/top-3, runbook classification accuracy, alert compression. Pooled over a held-out seed split with bootstrap confidence intervals, broken down by fault kind and intensity. |
 
 ## Results
 
-Averaged over 10 simulated days (1,440 min each, about 9 injected faults per day). Reproduce with `sentinel eval --seeds 10`.
+Held-out test split: 30 simulated days (seeds 100-129, 1,440 min each, about 9 injected faults per day, 273 faults in total). Thresholds were only ever tuned on a separate tuning split (seeds 0-9). Metrics are pooled over all days; brackets are 95% confidence intervals from a day-level bootstrap. Reproduce with `sentinel eval` (full report with per-fault-kind and per-intensity breakdowns: [`reports/benchmark-test.md`](reports/benchmark-test.md)).
 
 | Configuration | Precision | Recall | F1 | MTTD (min) | RCA top-1 | Runbook match | Alerts per incident |
 |---|---|---|---|---|---|---|---|
-| Static thresholds (baseline) | 1.00 | 0.49 | 0.65 | 3.98 | 1.00 | 0.94 | 1.5 |
-| Robust z + EWMA | 1.00 | 0.93 | 0.96 | 3.61 | 1.00 | 0.78 | 2.4 |
-| + Isolation Forest | 1.00 | 0.98 | 0.99 | 4.01 | 1.00 | 0.74 | 3.0 |
-| + Saturation forecast | 1.00 | 0.99 | 0.99 | 1.90 | 1.00 | 0.97 | 3.2 |
-| + Log mining (full) | 0.94 | 1.00 | 0.97 | 1.97 | 1.00 | 0.99 | 4.8 |
+| Static thresholds (baseline) | 1.00 [1.00, 1.00] | 0.55 [0.49, 0.60] | 0.71 [0.66, 0.75] | 3.4 [2.2, 4.7] | 1.00 | 0.93 [0.89, 0.96] | 1.7 |
+| Robust z + EWMA | 1.00 [1.00, 1.00] | 0.96 [0.94, 0.98] | 0.98 [0.97, 0.99] | 4.8 [3.7, 6.0] | 1.00 | 0.77 [0.71, 0.82] | 2.4 |
+| + Isolation Forest | 1.00 [1.00, 1.00] | 0.98 [0.97, 1.00] | 0.99 [0.98, 1.00] | 5.2 [4.1, 6.3] | 1.00 | 0.75 [0.70, 0.80] | 2.9 |
+| + Saturation forecast | 1.00 [1.00, 1.00] | 0.99 [0.98, 1.00] | 0.99 [0.99, 1.00] | 1.9 [1.5, 2.2] | 1.00 | 0.99 [0.98, 1.00] | 3.2 |
+| + Log mining (full) | 0.91 [0.89, 0.94] | 1.00 [1.00, 1.00] | 0.95 [0.94, 0.97] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 5.0 |
 
 What the ablation shows:
 
-- **Static thresholds miss half the faults.** They only catch hard failures. Every gray failure (a leak that tops out at 70% memory, a link losing 3% of packets) slips through.
-- **The forecaster halves MTTD** by alerting on memory trends before any threshold is crossed.
-- **Log mining is a trade-off.** It lifts recall to 100% and runbook accuracy to 99%, but costs about 6 points of precision from occasional log bursts that are not tied to a fault. Tuning that is on the roadmap.
-- **About 45 raw alerts a day become about 9.5 incidents**, each with a ranked root cause and a runbook.
+- **Static thresholds miss almost half the faults**, and the misses are not random: they catch 3% of CPU saturations and 32% of memory leaks, but every hard link flap. Subtle faults (intensity < 0.5) are caught 31% of the time.
+- **The forecaster cuts MTTD from 5.2 to 1.9 min, all of it on memory leaks (22 to 8 min).** Without it, a leak is never flagged on `mem_pct`: the EWMA chart absorbs a slow ramp into its mean and variance, and robust z and EWMA must agree. The leak is only noticed late, through the latency and errors it causes, so its runbook match is 0%. With the forecaster it is 100%.
+- **Log mining is a trade-off.** It lifts recall to 100%, but costs 9 points of precision on the held-out days (6 on the tuning days) from log bursts that are not tied to a fault. Fixing that is on the roadmap.
+- **About 51 raw alerts a day become about 10 incidents**, each with a ranked root cause and a runbook.
+- **RCA scores 1.00 because every fault happens alone.** That number says little until faults overlap; see Limitations.
+
+How the numbers are produced (details and alternatives in [`docs/DESIGN.md`](docs/DESIGN.md)):
+
+- **Tuning and test seeds are disjoint.** `sentinel eval --split tune` (seeds 0-9) is for development. `sentinel eval` (the test split) is only run to report results. CI benchmarks the tuning split so held-out numbers are not in front of us on every push.
+- **Pooled, not averaged per day.** Recall is all detected faults divided by all faults; precision is all matched incidents divided by all incidents.
+- **Day-level bootstrap.** Faults on the same day share telemetry, so the day is the independent unit: resample whole days, recompute, take the 2.5th and 97.5th percentiles.
 
 ## Quick start
 
@@ -63,9 +70,10 @@ cd netops-sentinel
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-pytest -q                          # 28 tests
+pytest -q                          # unit + end-to-end + API tests
 sentinel run --seed 42 -v          # simulate a day, print incidents, runbooks, and score
-sentinel eval --seeds 10           # benchmark vs static baseline -> reports/benchmark.md
+sentinel eval --split tune         # benchmark on the tuning seeds (use this while developing)
+sentinel eval                      # held-out test split -> reports/benchmark-test.{md,json}
 sentinel export --out data/        # metrics.csv, syslog.log, faults.json
 sentinel serve                     # API + dashboard at http://127.0.0.1:8000
 ```
@@ -111,6 +119,7 @@ Interactive docs at `/docs`.
 - Telemetry is synthetic. Real networks have missing data, clock skew, and far messier logs.
 - Faults happen one at a time, and the topology is clean, so RCA scores are optimistic. Concurrent and overlapping faults are the next test.
 - Log-burst alerts cost some precision (see results).
+- The EWMA control chart absorbs slow ramps into its baseline, so memory leaks are only caught by the forecaster ([DESIGN D5](docs/DESIGN.md)).
 - Batch processing over a full day; not yet streaming.
 
 ## Roadmap
@@ -141,6 +150,8 @@ src/sentinel/
   data/            topology.yaml, runbooks.yaml
   static/          dashboard
 tests/             unit + end-to-end + API tests
+reports/           benchmark reports per split (markdown + JSON)
+docs/DESIGN.md     decision log: what was tried, the numbers, what was kept
 ```
 
 ## License

@@ -249,12 +249,16 @@ def detect_metric_anomalies(
     detectors: tuple[str, ...] = ("robust_z", "ewma", "iforest", "forecast"),
     warmup: int = 180,
     min_len: int = 3,
+    cache: dict | None = None,
 ) -> list[Alert]:
     """Run the configured detectors over every (node, metric) series.
 
     Univariate detectors vote: a point is anomalous when *both* robust_z and
     ewma agree (if both are enabled), which cuts false positives from either
     one alone. The Isolation Forest emits its own node-level alerts.
+
+    `cache` (optional, one dict per simulated day) memoizes the Isolation
+    Forest scores, so benchmark configs that share the detector don't refit it.
     """
     alerts: list[Alert] = []
     nodes = list(dict.fromkeys(metrics.columns.get_level_values(0)))
@@ -288,8 +292,13 @@ def detect_metric_anomalies(
 
         if "iforest" in detectors:
             d = NodeIsolationForest(warmup)
-            s = d.score(metrics[node])
-            s[:warmup] = -1.0
+            key = ("iforest", node, warmup)
+            s = cache.get(key) if cache is not None else None
+            if s is None:
+                s = d.score(metrics[node])
+                s[:warmup] = -1.0
+                if cache is not None:
+                    cache[key] = s
             alerts += _alerts_from_score(node, "multivariate", d.name, s, 0.0, len(alerts), min_len)
 
     for i, a in enumerate(alerts):

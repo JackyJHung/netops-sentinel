@@ -1,4 +1,4 @@
-.PHONY: install test lint run eval serve docker
+.PHONY: install test lint run eval eval-tune serve docker
 
 install:
 	pip install -e ".[dev]"
@@ -13,7 +13,10 @@ run:
 	sentinel run --seed 42 -v
 
 eval:
-	sentinel eval --seeds 10 --out reports
+	sentinel eval --split test --out reports
+
+eval-tune:
+	sentinel eval --split tune --out reports
 
 serve:
 	sentinel serve --port 8000

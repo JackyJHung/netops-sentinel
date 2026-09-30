@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .evaluation import benchmark, evaluate, to_markdown
+from .evaluation import SPLITS, evaluate, run_benchmark, summarize, to_markdown
 from .pipeline import PipelineConfig, run_pipeline
 from .simulator import simulate
 from .topology import Topology
@@ -34,14 +34,17 @@ def cmd_run(args) -> None:
 
 
 def cmd_eval(args) -> None:
-    results = benchmark(seeds=range(args.seeds), minutes=args.minutes)
-    md = to_markdown(results)
+    seeds = SPLITS[args.split][: args.seeds] if args.seeds else SPLITS[args.split]
+    days = run_benchmark(seeds, minutes=args.minutes, jobs=args.jobs)
+    report = summarize(days, split=args.split, seeds=seeds, minutes=args.minutes)
+    md = to_markdown(report)
     print(md)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "benchmark.json").write_text(json.dumps(results, indent=2))
-    (out / "benchmark.md").write_text(f"Averaged over {args.seeds} simulated days ({args.minutes} min each).\n\n{md}\n")
-    print(f"\nWrote {out / 'benchmark.md'}")
+    stem = out / f"benchmark-{args.split}"
+    stem.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
+    stem.with_suffix(".md").write_text(md)
+    print(f"Wrote {stem}.json and {stem}.md")
 
 
 def cmd_export(args) -> None:
@@ -75,8 +78,10 @@ def main(argv=None) -> None:
     r.add_argument("-v", "--verbose", action="store_true", help="print runbook steps")
     r.set_defaults(func=cmd_run)
 
-    e = sub.add_parser("eval", help="benchmark vs static-threshold baseline")
-    e.add_argument("--seeds", type=int, default=10)
+    e = sub.add_parser("eval", help="benchmark the ablation ladder on a seed split, with 95% CIs")
+    e.add_argument("--split", choices=sorted(SPLITS), default="test", help="tune: seeds 0-9 (development); test: 100-129 (held out)")
+    e.add_argument("--seeds", type=int, default=None, help="only use the first N seeds of the split (quick runs)")
+    e.add_argument("--jobs", type=int, default=None, help="worker processes (default: CPU count)")
     e.add_argument("--minutes", type=int, default=1440)
     e.add_argument("--out", default="reports")
     e.set_defaults(func=cmd_eval)

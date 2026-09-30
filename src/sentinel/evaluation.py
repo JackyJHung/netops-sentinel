@@ -1,4 +1,4 @@
-"""Score a pipeline run against the simulator's ground-truth faults.
+"""Score pipeline runs against the simulator's ground-truth faults.
 
 Metrics reported (the ones an AIOps team actually tracks):
   precision / recall / F1   - incident-level, vs injected faults
@@ -6,21 +6,87 @@ Metrics reported (the ones an AIOps team actually tracks):
   RCA top-1 / top-3         - is the true root node the top (or a top-3) candidate?
   classification accuracy   - did the matched runbook's fault_kind equal the true kind?
   alert compression         - raw alerts per incident (how much noise was removed)
+
+Benchmark protocol (see docs/DESIGN.md):
+  * Seeds are split. `tune` (0-9) is for development and threshold tuning;
+    `test` (100-129) is held out and only used for the numbers we report.
+  * Metrics are pooled over every day in the split (recall = all detected
+    faults / all faults), not averaged per day.
+  * 95% confidence intervals come from a day-level bootstrap: resample whole
+    simulated days with replacement and recompute the pooled metric. The day
+    is the independent unit; faults on the same day share telemetry.
+  * Fault-level metrics are broken down by fault kind and intensity bucket.
 """
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 
 import numpy as np
 
 from .correlation import Incident
 from .pipeline import PipelineConfig, PipelineResult, run_pipeline
-from .simulator import Fault, SimulationResult, simulate
+from .simulator import FAULT_KINDS, Fault, SimulationResult, simulate
 from .topology import Topology
 
 PRE_SLACK = 5    # minutes before fault start an incident may begin and still count
 POST_SLACK = 15  # minutes after fault end
+
+SPLITS: dict[str, tuple[int, ...]] = {"tune": tuple(range(0, 10)), "test": tuple(range(100, 130))}
+SUBTLE_BELOW = 0.5  # intensity < 0.5 is a subtle ("gray") fault, >= 0.5 is hard
+INTENSITY_BUCKETS = ("subtle", "hard")
+N_BOOT = 2000
+CI_LEVEL = 0.95
+
+# Ablation ladder: each row adds one stage. The README results table is this ladder on the test split.
+ABLATION: dict[str, PipelineConfig] = {
+    "static_baseline": PipelineConfig.baseline(),
+    "robust_z+ewma": PipelineConfig(detectors=("robust_z", "ewma"), use_logs=False),
+    "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False),
+    "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False),
+    "sentinel": PipelineConfig(),
+}
+
+OVERALL_METRICS = (
+    "precision", "recall", "f1", "mttd_min", "rca_top1", "rca_top3",
+    "classification_acc", "alert_compression", "n_alerts", "n_incidents",
+)
+FAULT_METRICS = ("recall", "mttd_min", "rca_top1", "rca_top3", "classification_acc")
+
+
+def intensity_bucket(intensity: float) -> str:
+    return "subtle" if intensity < SUBTLE_BELOW else "hard"
+
+
+# --------------------------------------------------------------------------
+# Scoring one simulated day
+# --------------------------------------------------------------------------
+@dataclass
+class FaultOutcome:
+    fault_id: str
+    kind: str
+    root: str
+    intensity: float
+    detected: bool
+    ttd: float | None  # minutes from fault start to first matching incident
+    top1: bool
+    top3: bool
+    cls_ok: bool  # runbook fault_kind == true kind
+
+    @property
+    def bucket(self) -> str:
+        return intensity_bucket(self.intensity)
+
+
+@dataclass
+class DayScore:
+    seed: int
+    n_alerts: int
+    n_incidents: int
+    n_matched_incidents: int
+    faults: list[FaultOutcome]
 
 
 @dataclass
@@ -31,7 +97,7 @@ class EvalReport:
     precision: float
     recall: float
     f1: float
-    mttd_min: float
+    mttd_min: float | None
     rca_top1: float
     rca_top3: float
     classification_acc: float
@@ -47,63 +113,227 @@ def _matches(inc: Incident, f: Fault, topo: Topology) -> bool:
     return overlaps and any(n in blast for n in inc.nodes)
 
 
-def evaluate(sim: SimulationResult, result: PipelineResult, topo: Topology | None = None) -> EvalReport:
+def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | None = None) -> DayScore:
     topo = topo or Topology.default()
-    incidents, faults = result.incidents, sim.faults
-
+    incidents = result.incidents
     matched_incidents: set[str] = set()
-    detected, ttd, top1, top3, cls = 0, [], 0, 0, 0
-    for f in faults:
+    outcomes: list[FaultOutcome] = []
+    for f in sim.faults:
         hits = [i for i in incidents if _matches(i, f, topo)]
         matched_incidents.update(i.incident_id for i in hits)
         if not hits:
+            outcomes.append(FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False))
             continue
-        detected += 1
-        ttd.append(max(0, min(i.start for i in hits) - f.start))
+        ttd = float(max(0, min(i.start for i in hits) - f.start))
         # judge RCA on the biggest matching incident (the one on-call would work)
         main = max(hits, key=lambda i: len(i.alerts))
         cands = [c["node"] for c in main.root_causes]
-        top1 += bool(cands) and cands[0] == f.root
-        top3 += f.root in cands[:3]
-        cls += (main.runbook or {}).get("fault_kind") == f.kind
+        outcomes.append(
+            FaultOutcome(
+                f.fault_id, f.kind, f.root, f.intensity, True, ttd,
+                top1=bool(cands) and cands[0] == f.root,
+                top3=f.root in cands[:3],
+                cls_ok=(main.runbook or {}).get("fault_kind") == f.kind,
+            )
+        )
+    return DayScore(sim.seed, len(result.alerts), len(incidents), len(matched_incidents), outcomes)
 
-    n_inc, n_f = len(incidents), len(faults)
-    precision = len(matched_incidents) / n_inc if n_inc else 0.0
-    recall = detected / n_f if n_f else 1.0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+
+# --------------------------------------------------------------------------
+# Pooled metrics
+# --------------------------------------------------------------------------
+def _ratio(a, b):
+    """a / b with NaN where b == 0. Works on scalars and bootstrap arrays."""
+    a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(b > 0, a / np.where(b > 0, b, 1.0), np.nan)
+
+
+def _day_counts(day: DayScore, keep=None) -> dict[str, float]:
+    faults = [f for f in day.faults if keep is None or keep(f)]
+    det = [f for f in faults if f.detected]
+    return {
+        "days": 1.0,
+        "faults": len(faults),
+        "detected": len(det),
+        "ttd_sum": sum(f.ttd for f in det),
+        "top1": sum(f.top1 for f in det),
+        "top3": sum(f.top3 for f in det),
+        "cls": sum(f.cls_ok for f in det),
+        "incidents": day.n_incidents,
+        "matched": day.n_matched_incidents,
+        "alerts": day.n_alerts,
+    }
+
+
+def _metrics(c: dict) -> dict:
+    """Pooled metrics from summed counts. NaN marks an undefined metric (e.g. recall with no faults)."""
+    p = _ratio(c["matched"], c["incidents"])
+    r = _ratio(c["detected"], c["faults"])
+    return {
+        "precision": p,
+        "recall": r,
+        "f1": _ratio(2 * p * r, p + r),
+        "mttd_min": _ratio(c["ttd_sum"], c["detected"]),
+        "rca_top1": _ratio(c["top1"], c["detected"]),
+        "rca_top3": _ratio(c["top3"], c["detected"]),
+        "classification_acc": _ratio(c["cls"], c["detected"]),
+        "alert_compression": _ratio(c["alerts"], c["incidents"]),
+        "n_alerts": _ratio(c["alerts"], c["days"]),
+        "n_incidents": _ratio(c["incidents"], c["days"]),
+    }
+
+
+def _num(x) -> float | None:
+    x = float(x)
+    return round(x, 3) if np.isfinite(x) else None
+
+
+def evaluate(sim: SimulationResult, result: PipelineResult, topo: Topology | None = None) -> EvalReport:
+    """Score a single simulated day (used by `sentinel run`, the API, and tests)."""
+    day = score_day(sim, result, topo)
+    m = {k: float(v) for k, v in _metrics(_day_counts(day)).items()}
+
+    def fill(v: float, empty: float) -> float:
+        return v if np.isfinite(v) else empty
+
     return EvalReport(
-        n_faults=n_f,
-        n_incidents=n_inc,
-        n_alerts=len(result.alerts),
-        precision=precision,
-        recall=recall,
-        f1=f1,
-        mttd_min=float(np.mean(ttd)) if ttd else float("nan"),
-        rca_top1=top1 / detected if detected else 0.0,
-        rca_top3=top3 / detected if detected else 0.0,
-        classification_acc=cls / detected if detected else 0.0,
-        alert_compression=len(result.alerts) / n_inc if n_inc else 0.0,
+        n_faults=len(day.faults),
+        n_incidents=day.n_incidents,
+        n_alerts=day.n_alerts,
+        precision=fill(m["precision"], 0.0),
+        recall=fill(m["recall"], 1.0),
+        f1=fill(m["f1"], 0.0),
+        mttd_min=m["mttd_min"] if np.isfinite(m["mttd_min"]) else None,
+        rca_top1=fill(m["rca_top1"], 0.0),
+        rca_top3=fill(m["rca_top3"], 0.0),
+        classification_acc=fill(m["classification_acc"], 0.0),
+        alert_compression=fill(m["alert_compression"], 0.0),
     )
 
 
-def benchmark(seeds=range(5), minutes: int = 1440, configs: dict[str, PipelineConfig] | None = None) -> dict[str, dict]:
-    """Average each config's metrics across several simulated days."""
-    topo = Topology.default()
-    configs = configs or {"static_baseline": PipelineConfig.baseline(), "sentinel": PipelineConfig()}
-    out: dict[str, dict] = {}
-    for name, cfg in configs.items():
-        reports = []
-        for seed in seeds:
-            sim = simulate(topo, minutes=minutes, seed=seed)
-            reports.append(evaluate(sim, run_pipeline(sim, topo, cfg), topo).to_dict())
-        keys = reports[0].keys()
-        out[name] = {k: round(float(np.nanmean([r[k] for r in reports])), 3) for k in keys}
+# --------------------------------------------------------------------------
+# Day-level bootstrap
+# --------------------------------------------------------------------------
+def _bootstrap_weights(n_days: int, n_boot: int = N_BOOT, seed: int = 0) -> np.ndarray:
+    """(n_boot, n_days) resample counts: row b says how often each day appears in resample b."""
+    rng = np.random.default_rng(seed)
+    return rng.multinomial(n_days, np.full(n_days, 1.0 / n_days), size=n_boot)
+
+
+def _with_ci(days: list[DayScore], weights: np.ndarray, metrics: tuple[str, ...], keep=None) -> dict[str, dict]:
+    rows = [_day_counts(d, keep) for d in days]
+    per_day = {k: np.array([r[k] for r in rows], dtype=float) for k in rows[0]}
+    point = _metrics({k: v.sum() for k, v in per_day.items()})
+    boot = _metrics({k: weights @ v for k, v in per_day.items()})
+    tail = 100 * (1 - CI_LEVEL) / 2
+    out = {}
+    for name in metrics:
+        b = boot[name][np.isfinite(boot[name])]
+        lo, hi = np.percentile(b, [tail, 100 - tail]) if b.size else (np.nan, np.nan)
+        out[name] = {"mean": _num(point[name]), "lo": _num(lo), "hi": _num(hi)}
     return out
 
 
-def to_markdown(results: dict[str, dict]) -> str:
-    cols = ["precision", "recall", "f1", "mttd_min", "rca_top1", "rca_top3", "classification_acc", "alert_compression", "n_alerts", "n_incidents"]
-    lines = ["| config | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
-    for name, r in results.items():
-        lines.append(f"| {name} | " + " | ".join(str(r[c]) for c in cols) + " |")
-    return "\n".join(lines)
+def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = None, seeds=None, minutes: int | None = None) -> dict:
+    """Pooled metrics with 95% CIs, overall and per fault kind / intensity bucket, for each config."""
+    n_days = len(next(iter(days_by_config.values())))
+    weights = _bootstrap_weights(n_days)
+    def fault_slice(days: list[DayScore], keep) -> dict:
+        n = sum(keep(f) for d in days for f in d.faults)
+        return {"n_faults": n, **_with_ci(days, weights, FAULT_METRICS, keep)}
+
+    configs = {}
+    for name, days in days_by_config.items():
+        configs[name] = {
+            "overall": _with_ci(days, weights, OVERALL_METRICS),
+            "by_kind": {k: fault_slice(days, lambda f, k=k: f.kind == k) for k in FAULT_KINDS},
+            "by_intensity": {b: fault_slice(days, lambda f, b=b: f.bucket == b) for b in INTENSITY_BUCKETS},
+        }
+    return {
+        "split": split,
+        "seeds": list(seeds) if seeds is not None else None,
+        "n_days": n_days,
+        "minutes": minutes,
+        "ci": f"{CI_LEVEL:.0%} CI, day-level bootstrap ({N_BOOT} resamples)",
+        "configs": configs,
+    }
+
+
+# --------------------------------------------------------------------------
+# Benchmark runner
+# --------------------------------------------------------------------------
+def _run_seed(task: tuple[int, int, dict[str, PipelineConfig]]) -> dict[str, DayScore]:
+    seed, minutes, configs = task
+    topo = Topology.default()
+    sim = simulate(topo, minutes=minutes, seed=seed)
+    cache: dict = {}  # detector scores shared by every config on this simulated day
+    return {name: score_day(sim, run_pipeline(sim, topo, cfg, cache=cache), topo) for name, cfg in configs.items()}
+
+
+def run_benchmark(seeds, minutes: int = 1440, configs: dict[str, PipelineConfig] | None = None, jobs: int | None = None) -> dict[str, list[DayScore]]:
+    """Simulate each seed once, run every config on it, and return per-day scores per config."""
+    configs = configs or ABLATION
+    tasks = [(int(s), minutes, configs) for s in seeds]
+    jobs = min(jobs or os.cpu_count() or 1, len(tasks))
+    if jobs > 1:
+        with ProcessPoolExecutor(max_workers=jobs) as pool:
+            per_seed = list(pool.map(_run_seed, tasks))
+    else:
+        per_seed = [_run_seed(t) for t in tasks]
+    return {name: [r[name] for r in per_seed] for name in configs}
+
+
+# --------------------------------------------------------------------------
+# Markdown
+# --------------------------------------------------------------------------
+_LABELS = {
+    "precision": "precision", "recall": "recall", "f1": "F1", "mttd_min": "MTTD (min)",
+    "rca_top1": "RCA top-1", "rca_top3": "RCA top-3", "classification_acc": "runbook match",
+    "alert_compression": "alerts/incident", "n_alerts": "alerts/day", "n_incidents": "incidents/day",
+}
+
+
+def _cell(m: dict, digits: int = 2) -> str:
+    if m["mean"] is None:
+        return "n/a"
+    ci = f" [{m['lo']:.{digits}f}, {m['hi']:.{digits}f}]" if m["lo"] is not None else ""
+    return f"{m['mean']:.{digits}f}{ci}"
+
+
+def _digits(metric: str) -> int:
+    return 1 if metric in ("mttd_min", "alert_compression", "n_alerts", "n_incidents") else 2
+
+
+def _table(rows: dict[str, dict], metrics: tuple[str, ...], first_col: str, with_n: bool = False) -> list[str]:
+    head = [first_col] + (["faults"] if with_n else []) + [_LABELS[m] for m in metrics]
+    lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    for name, r in rows.items():
+        cells = [name] + ([str(r["n_faults"])] if with_n else []) + [_cell(r[m], _digits(m)) for m in metrics]
+        lines.append("| " + " | ".join(cells) + " |")
+    return lines
+
+
+def to_markdown(report: dict) -> str:
+    split = report.get("split") or "custom"
+    seeds = report.get("seeds") or []
+    seed_txt = f"seeds {seeds[0]}-{seeds[-1]}" if seeds else "custom seeds"
+    held_out = " (held out)" if split == "test" else " (development only)" if split == "tune" else ""
+    lines = [
+        f"# Benchmark: {split} split{held_out}",
+        "",
+        f"{report['n_days']} simulated days ({seed_txt}), {report.get('minutes') or '?'} min each. "
+        f"Values are pooled over all days; brackets are the {report['ci']}.",
+        "",
+        "## Overall",
+        "",
+        *_table({n: c["overall"] for n, c in report["configs"].items()}, OVERALL_METRICS, "config"),
+    ]
+    for name in ("static_baseline", "sentinel"):
+        if name not in report["configs"]:
+            continue
+        cfg = report["configs"][name]
+        lines += ["", f"## {name}: by fault kind", "", *_table(cfg["by_kind"], FAULT_METRICS, "fault kind", with_n=True)]
+        lines += ["", f"## {name}: by intensity (subtle < {SUBTLE_BELOW}, hard >= {SUBTLE_BELOW})", ""]
+        lines += _table(cfg["by_intensity"], FAULT_METRICS, "intensity", with_n=True)
+    return "\n".join(lines) + "\n"
