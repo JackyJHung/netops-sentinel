@@ -244,13 +244,20 @@ All choices in this milestone were made on the tuning split. The test split was 
 - **Results (test, hard).** Precision 0.80 [0.76, 0.84] to 0.96 [0.95, 0.98]; benign events paged 1.00 to 0.14 (mostly the ~20% of benign events never logged as changes); recall 0.99 unchanged, 0 of 71 suppressed incidents was a real fault. MTTD 1.8 to 4.7 min overall: 1.7 to 8.1 for change-caused faults, 1.8 to 2.6 for the rest. Clean scenario unchanged.
 - **Is it worth it?** A policy call, not a measurement: 16 points of precision (71 fewer false pages over 30 simulated days, about 2.4 a day) against about 6 extra minutes before a change-caused outage pages. Kept on by default as the last ablation row so both numbers are visible; `PipelineConfig(change_hold=0)` turns it off.
 
+### D28. Decide the hold per root cause, not per incident
+
+- **Problem (D27).** On tune, 10 of 11 faults that were not caused by a change but still paged late shared a merged incident with a change-caused partner; the whole incident was held. In 7 of the 10, the delayed fault's root was itself a declared root of that incident.
+- **Change.** When an incident has several declared roots, its alerts are grouped per root (each alert goes to the root upstream of it with the most recent onset, the same rule correlation uses when splitting), and each group gets its own hold decision. The incident pages at the earliest page time of any group and is suppressed only if every group is. Incidents with one root behave exactly as before.
+- **Numbers.** Tune, hard: precision 0.926, recall 0.986, and suppressions (24, one real) identical; MTTD 4.40 to 4.06 (change-caused 8.24 to 7.80, other 2.43 to 2.14). Test, hard: precision 0.96 and recall 0.99 unchanged, 71 suppressed (none real) unchanged; MTTD 4.7 to 4.2 (change-caused 8.1 to 7.4, other 2.6 to 2.2). Clean unchanged.
+- **Not fixed.** The 3 tune cases whose own root was never declared still wait; that depends on multi-root declaration (D21).
+
 ## Where things stand (test split, full pipeline)
 
 | | Start of session (seeds 0-9, what the README claimed) | Clean scenario now | Hard scenario now |
 |---|---|---|---|
 | Precision | 0.94 | 1.00 [1.00, 1.00] | 0.96 [0.95, 0.98] |
 | Recall | 1.00 | 1.00 | 0.99 [0.99, 1.00] |
-| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.7 [4.3, 5.1] (1.8 without change-aware paging) |
+| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.2 [3.9, 4.6] (1.8 without change-aware paging) |
 | RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.96, 0.99] |
 | Runbook match | 0.99 | 1.00 | 0.83 [0.79, 0.88] |
 | Wrong merges / benign paged | not measured | n/a | 0.06 / 0.14 |

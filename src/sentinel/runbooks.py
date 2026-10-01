@@ -76,8 +76,10 @@ def summarize(incident: Incident, fmt_time=lambda t: f"t+{t}m") -> str:
         kind = c.kind.replace("_", " ")
         if incident.suppressed:
             parts.append(f"Not paged: started right after a {kind} to {c.node} at {fmt_time(c.t)} and cleared during the hold.")
-        else:
+        elif incident.paged_at > incident.start:
             parts.append(f"Paged at {fmt_time(incident.paged_at)} after a hold: started right after a {kind} to {c.node} and did not clear.")
+        else:
+            parts.append(f"Part of this incident followed a {kind} to {c.node}; another root cause paged it immediately.")
     roots = set(incident.roots)
     impacted = [n for n in incident.nodes if n not in roots]
     if impacted:

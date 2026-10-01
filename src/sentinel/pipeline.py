@@ -37,6 +37,7 @@ class PipelineConfig:
     change_lookback: int = 15  # minutes before a node's first alert that a change still counts
     change_weight: float = 0.25  # RCA score weight of "changed shortly before alerting"
     change_hold: int = 8  # minutes to hold a page after a recorded change; drop it if it clears (0 = off; tuned on tune)
+    hold_per_root: bool = True  # decide the hold per declared root cause, not for the whole incident
 
     @classmethod
     def baseline(cls) -> PipelineConfig:
@@ -91,12 +92,14 @@ def run_pipeline(
     )
     if config.change_evidence:
         attach_changes(incidents, sim.changes, config.change_lookback)
-    apply_change_hold(incidents, sim.changes, config.change_lookback, config.change_hold)
+    # paging needs the declared roots, so it runs after RCA (below)
     runbooks = load_runbooks()
     fmt = lambda t: sim.timestamp(t).strftime("%H:%M")  # noqa: E731
     for inc in incidents:
         inc.root_causes = rank_root_causes(inc, topo, weights={"change": config.change_weight}, multi_root=config.multi_root)
         inc.runbooks = {node: match_runbook(inc, runbooks, miner, node) for node in inc.roots}
         inc.runbook = inc.runbooks.get(inc.root_cause) or match_runbook(inc, runbooks, miner)
+    apply_change_hold(incidents, sim.changes, config.change_lookback, config.change_hold, config.hold_per_root, topo)
+    for inc in incidents:
         inc.summary = summarize(inc, fmt)
     return PipelineResult(alerts, incidents, miner, config, silences)

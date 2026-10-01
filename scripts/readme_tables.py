@@ -21,7 +21,8 @@ LABELS = {
     "+multi-root RCA": "+ Multi-root RCA",
     "+calibrated log bursts": "+ Calibrated log bursts",
     "+change events": "+ Change events (RCA signal)",
-    "sentinel": "+ Change-aware paging (full)",
+    "+change-aware paging": "+ Change-aware paging",
+    "sentinel": "+ Hold per root cause (full)",
 }
 HEADERS = {
     "precision": "Precision", "recall": "Recall", "f1": "F1", "mttd_min": "MTTD (min)", "rca_top1": "RCA top-1",

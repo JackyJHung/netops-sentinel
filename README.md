@@ -59,7 +59,8 @@ About 9 faults per day, 273 in total.
 | + Multi-root RCA | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
 | + Calibrated log bursts | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 | + Change events (RCA signal) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
-| + Change-aware paging (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Change-aware paging | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Hold per root cause (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 
 What the ablation shows:
 
@@ -85,7 +86,8 @@ The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py
 | + Multi-root RCA | 0.76 [0.71, 0.80] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.96 [0.94, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 | + Calibrated log bursts | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.97 [0.95, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.80, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 | + Change events (RCA signal) | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
-| + Change-aware paging (full) | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.7 [4.3, 5.1] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
+| + Change-aware paging | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.7 [4.3, 5.1] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
+| + Hold per root cause (full) | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.2 [3.9, 4.6] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
 
 RCA is scored per fault: a fault is a top-1 hit if its root is first in the incident that carries its evidence, once the roots of *other* faults in that incident are set aside. Under the older per-incident metric (one root per incident, so a merged pair always loses one fault) the log-mining row scores 0.62; the metric change alone accounts for 0.62 to 0.84, and the pipeline changes for 0.84 to 0.96. Wrong merges: share of concurrent faults on unrelated branches that ended up in one incident.
 
@@ -96,7 +98,7 @@ What breaks, and what fixed it:
 - **Merged same-branch faults need two answers.** **Multi-root RCA** declares a second root when the first cannot explain it (an unrelated branch, or CPU/memory symptoms, which do not cascade downstream), puts declared roots first, and matches a runbook per root: runbook match 0.75 to 0.83, top-1 to 0.96. 43 of the 46 extra roots it declares are real roots of concurrent faults.
 - **Log-burst false alarms are gone** (calibrated burst test, see the clean scenario): precision 0.76 to 0.80.
 - **A change just before a node alerts is evidence.** The change log (deploys, config pushes) is attached to incidents: a change on a node in the 15 min before it alerted adds to its RCA score, counts as local evidence for declaring a second root, and is named in the summary. For the 158 faults that were caused by a change, top-1 goes 0.95 to 0.99 and runbook match 0.83 to 0.87. It is not free: harmless changes near incidents add a few false extra roots (extra-root precision 0.98 to 0.92), which the tuning split did not show.
-- **Change-aware paging stops benign pages, at a price in detection time.** When a recorded change hit an incident's node just before it started, the page is held for 8 min and dropped if every alert has cleared (a rolling restart recovers, a bad deploy does not). Precision 0.80 to 0.96, benign events paged 100% to 14% (most of the rest were never logged as changes), recall unchanged, and none of the 71 suppressed incidents was a real fault. The cost: faults caused by a change page about 8 min after onset instead of 1.7, and faults that share an incident with one wait too (other faults 1.8 to 2.6 min). Turn it off with `PipelineConfig(change_hold=0)` if that trade is wrong for you.
+- **Change-aware paging stops benign pages, at a price in detection time.** When a recorded change hit an incident's node just before it started, the page is held for 8 min and dropped if every alert has cleared (a rolling restart recovers, a bad deploy does not). Precision 0.80 to 0.96, benign events paged 100% to 14% (most of the rest were never logged as changes), recall unchanged, and none of the 71 suppressed incidents was a real fault. The cost: faults caused by a change page about 6 min later than without the hold. **Holding per root cause** (each declared root's alerts are held or not on their own, so a concurrent fault does not wait for its partner's change) brings MTTD back from 4.7 to 4.2 min: change-caused faults 7.4 min (1.7 without the hold), other faults 2.2 min (1.8). Turn the hold off with `PipelineConfig(change_hold=0)` if that trade is wrong for you.
 - **Missing telemetry does not cause false alerts or blind the detectors**: every detector treats a missing point as "no evidence" ([DESIGN D10](docs/DESIGN.md)).
 
 How the numbers are produced (details and alternatives in [`docs/DESIGN.md`](docs/DESIGN.md)):

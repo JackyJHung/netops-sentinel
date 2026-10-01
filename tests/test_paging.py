@@ -49,3 +49,39 @@ def test_evaluation_ignores_suppressed_and_delays_held_pages():
     assert day.n_incidents == 1 and day.n_matched_incidents == 1  # the suppressed incident never paged
     assert day.faults[0].ttd == 11.0  # detection counts from the page, not the first alert
     assert day.n_suppressed == 1 and day.n_suppressed_real == 0
+
+
+# ---------------------------------------------------------------- hold per root cause
+def _multi_root_incident():
+    """access-sw-2 (config pushed at 98) cascades to cache-1; web-1 has its own CPU fault from 104 (declared root)."""
+    alerts = [
+        Alert("A1", "access-sw-2", "packet_loss_pct", "robust_z+ewma", 100, 140, 3.0, "critical"),
+        Alert("A2", "cache-1", "latency_ms", "robust_z+ewma", 101, 140, 2.0, "warning"),
+        Alert("A3", "web-1", "cpu_pct", "robust_z+ewma", 104, 140, 3.0, "critical"),
+    ]
+    inc = Incident("INC-1", alerts)
+    inc.root_causes = [{"node": "access-sw-2", "declared": True}, {"node": "web-1", "declared": True}, {"node": "cache-1", "declared": False}]
+    return inc
+
+
+def test_unrelated_root_pages_without_waiting_for_its_partners_change():
+    change = [ChangeEvent("C1", "config_push", "access-sw-2", 98)]
+    per_incident, per_root = _multi_root_incident(), _multi_root_incident()
+    apply_change_hold([per_incident], change, window=15, grace=10, per_root=False)
+    apply_change_hold([per_root], change, window=15, grace=10, per_root=True)
+    assert per_incident.paged_at == 110  # the whole incident waited for the hold
+    assert per_root.held and not per_root.suppressed and per_root.paged_at == 104  # web-1's group paged at once
+
+
+def test_incident_is_suppressed_only_if_every_root_group_clears():
+    inc = _multi_root_incident()
+    for a in inc.alerts:
+        a.end = a.start + 4  # everything clears fast
+    apply_change_hold([inc], [ChangeEvent("C1", "config_push", "access-sw-2", 98)], window=15, grace=10, per_root=True)
+    assert not inc.suppressed and inc.paged_at == 104  # web-1 had no change, so it still pages
+    inc = _multi_root_incident()
+    for a in inc.alerts:
+        a.end = a.start + 4
+    changes = [ChangeEvent("C1", "config_push", "access-sw-2", 98), ChangeEvent("C2", "deploy", "web-1", 103)]
+    apply_change_hold([inc], changes, window=15, grace=10, per_root=True)
+    assert inc.suppressed and inc.paged_at is None
