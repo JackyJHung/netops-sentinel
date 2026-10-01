@@ -174,3 +174,37 @@ def test_summary_names_the_change():
     inc.root_causes = rank_root_causes(inc, topo)
     text = summarize(inc, lambda t: f"{t // 60:02d}:{t % 60:02d}")
     assert "config push to dist-sw-2 at 14:02, 3 min before first alert" in text
+
+
+# ---------------------------------------------------------------- local evidence declares a root (DESIGN D21)
+def _router_cpu_with_concurrent_leak():
+    """core-rtr-1 CPU fault cascades latency to both distribution switches; 13 min later cache-1 starts
+    leaking memory. cache-1 explains nothing below it, so it scores low, but a memory leak cannot come from
+    the router's CPU."""
+    return [
+        _a(1, "core-rtr-1", 788, 791, signal="cpu_pct", sev="critical"),
+        _a(2, "core-rtr-1", 788, 791, signal="latency_ms"),
+        _a(3, "dist-sw-1", 789, 817),
+        _a(4, "dist-sw-2", 789, 834),
+        _a(5, "cache-1", 801, 818, signal="mem_pct", det="forecast"),
+        _a(6, "cache-1", 811, 818),
+    ]
+
+
+def test_local_evidence_declares_a_root_below_the_score_floor():
+    from sentinel.rca import MIN_ROOT_SCORE
+
+    topo = Topology.default()
+    (inc,) = correlate(_router_cpu_with_concurrent_leak(), topo)
+    old = rank_root_causes(inc, topo, local_root_floor=MIN_ROOT_SCORE)
+    cache = next(c for c in old if c["node"] == "cache-1")
+    assert cache["score"] < MIN_ROOT_SCORE * old[0]["score"] and not cache["declared"]
+    new = rank_root_causes(inc, topo)
+    assert [c["node"] for c in new if c["declared"]] == ["core-rtr-1", "cache-1"]
+
+
+def test_no_local_evidence_still_needs_the_floor():
+    topo = Topology.default()
+    alerts = [a for a in _router_cpu_with_concurrent_leak() if a.signal != "mem_pct"]  # cache-1 only has latency now
+    (inc,) = correlate(alerts, topo)
+    assert [c["node"] for c in rank_root_causes(inc, topo) if c["declared"]] == ["core-rtr-1"]

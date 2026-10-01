@@ -63,11 +63,12 @@ ABLATION: dict[str, PipelineConfig] = {
         silence_evidence=False, multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None
     ),
     "+silent nodes": PipelineConfig(multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None),
-    "+multi-root RCA": PipelineConfig(change_evidence=False, change_hold=0, log_false_bursts_per_day=None),
-    "+calibrated log bursts": PipelineConfig(change_evidence=False, change_hold=0),
-    "+change events": PipelineConfig(change_hold=0),
-    "+change-aware paging": PipelineConfig(hold_per_root=False),
-    "sentinel": PipelineConfig(),  # + hold decided per root cause
+    "+multi-root RCA": PipelineConfig(change_evidence=False, change_hold=0, log_false_bursts_per_day=None, local_root_floor=0.4),
+    "+calibrated log bursts": PipelineConfig(change_evidence=False, change_hold=0, local_root_floor=0.4),
+    "+change events": PipelineConfig(change_hold=0, local_root_floor=0.4),
+    "+change-aware paging": PipelineConfig(hold_per_root=False, local_root_floor=0.4),
+    "+hold per root cause": PipelineConfig(local_root_floor=0.4),
+    "sentinel": PipelineConfig(),  # + local evidence declares roots below the score floor
 }
 
 OVERALL_METRICS = (

@@ -27,7 +27,8 @@ from .topology import Topology
 
 WEIGHTS = {"explain": 0.45, "earliness": 0.35, "intensity": 0.20, "change": 0.25}
 LOCAL_SIGNALS = {"cpu_pct", "mem_pct"}  # resource saturation stays on the box; it does not cascade to dependents
-MIN_ROOT_SCORE = 0.4  # a second root must score at least this fraction of the top candidate
+MIN_ROOT_SCORE = 0.4  # a second root must score at least this fraction of the top candidate...
+LOCAL_ROOT_SCORE = 0.1  # ...unless it has local evidence (CPU/memory symptoms or a recent change); see DESIGN D29
 MAX_ROOTS = 3
 
 
@@ -63,6 +64,7 @@ def rank_root_causes(
     weights: dict | None = None,
     top_k: int = 5,
     multi_root: bool = True,
+    local_root_floor: float = LOCAL_ROOT_SCORE,
 ) -> list[dict]:
     w = {**WEIGHTS, **(weights or {})}
     first = onsets(incident)
@@ -127,15 +129,20 @@ def rank_root_causes(
             }
         )
     ranked.sort(key=lambda r: (-r["score"], r["node"]))
-    _declare_roots(ranked, incident, topo, multi_root)
+    _declare_roots(ranked, incident, topo, multi_root, local_root_floor)
     ranked.sort(key=lambda r: (not r["declared"], -r["score"], r["node"]))  # the declared roots are the answer
     return ranked[:top_k]
 
 
-def _declare_roots(ranked: list[dict], incident: Incident, topo: Topology, multi_root: bool) -> None:
+def _declare_roots(
+    ranked: list[dict], incident: Incident, topo: Topology, multi_root: bool, local_root_floor: float = LOCAL_ROOT_SCORE
+) -> None:
     """Mark the top candidate as a root, plus (if `multi_root`) any later candidate the declared roots cannot
     explain: one on an unrelated branch, or one downstream but with local evidence that does not propagate
-    (CPU or memory saturation, or a change made to it just before it alerted)."""
+    (CPU or memory saturation, or a change made to it just before it alerted).
+
+    A candidate with local evidence only has to clear `local_root_floor` x top score: its evidence is about
+    the node itself, so it should not need downstream alerts to score high enough (DESIGN D21)."""
     if not ranked:
         return
     ranked[0]["declared"] = True
@@ -143,11 +150,13 @@ def _declare_roots(ranked: list[dict], incident: Incident, topo: Topology, multi
         return
     local = {a.node for a in incident.alerts if a.signal in LOCAL_SIGNALS} | {c["node"] for c in ranked if c.get("change")}
     declared = [ranked[0]["node"]]
-    floor = MIN_ROOT_SCORE * ranked[0]["score"]
+    floor, local_floor = MIN_ROOT_SCORE * ranked[0]["score"], local_root_floor * ranked[0]["score"]
     for c in ranked[1:]:
-        if len(declared) >= MAX_ROOTS or c["score"] < floor:
+        if len(declared) >= MAX_ROOTS:
             break
         n = c["node"]
+        if c["score"] < (local_floor if n in local else floor):
+            continue
         if any(d in topo.downstream(n) for d in declared):
             continue  # upstream of a declared root: it would explain that root, and it ranked lower
         explained = any(n in topo.downstream(d) for d in declared)

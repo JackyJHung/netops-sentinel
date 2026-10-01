@@ -251,15 +251,24 @@ All choices in this milestone were made on the tuning split. The test split was 
 - **Numbers.** Tune, hard: precision 0.926, recall 0.986, and suppressions (24, one real) identical; MTTD 4.40 to 4.06 (change-caused 8.24 to 7.80, other 2.43 to 2.14). Test, hard: precision 0.96 and recall 0.99 unchanged, 71 suppressed (none real) unchanged; MTTD 4.7 to 4.2 (change-caused 8.1 to 7.4, other 2.6 to 2.2). Clean unchanged.
 - **Not fixed.** The 3 tune cases whose own root was never declared still wait; that depends on multi-root declaration (D21).
 
+## Roadmap follow-ups
+
+### D29. Local evidence declares a root below the score floor (fixes D21)
+
+- **Change.** A candidate with local evidence (CPU or memory alerts, or a change just before it alerted) only needs `local_root_floor` x the top score to be declared a root; other candidates still need 40%. Local evidence is about the node itself, so it should not depend on having downstream alerts to "explain".
+- **Sweep (tune, hard):** floors 0.4, 0.3, 0.2 identical; 0.1 and 0.0 declare one more root (correct), runbook 0.853 to 0.860, everything else identical. Kept 0.1 (same result as 0, keeps a sanity floor). Clean unchanged at every setting.
+- **Test, hard:** 7 more extra roots declared (48 to 55), all 7 correct (extra-root precision 0.938 to 0.945); RCA top-1 0.978 to 0.985; runbook match 0.835 to 0.852; MTTD 4.21 to 4.18 (a newly declared root can page on its own under the per-root hold). Precision and recall unchanged.
+- The effect is bigger on test than tune because tune has few such cases (one); the direction matches and extra-root precision did not drop, which was the guard.
+
 ## Where things stand (test split, full pipeline)
 
 | | Start of session (seeds 0-9, what the README claimed) | Clean scenario now | Hard scenario now |
 |---|---|---|---|
 | Precision | 0.94 | 1.00 [1.00, 1.00] | 0.96 [0.95, 0.98] |
 | Recall | 1.00 | 1.00 | 0.99 [0.99, 1.00] |
-| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.2 [3.9, 4.6] (1.8 without change-aware paging) |
-| RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.96, 0.99] |
-| Runbook match | 0.99 | 1.00 | 0.83 [0.79, 0.88] |
+| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.2 [3.8, 4.5] (1.8 without change-aware paging) |
+| RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.97, 0.99] |
+| Runbook match | 0.99 | 1.00 | 0.85 [0.81, 0.89] |
 | Wrong merges / benign paged | not measured | n/a | 0.06 / 0.14 |
 
 The milestone 2 baseline on the same hard days was precision 0.72, RCA top-1 0.62 under the old metric (0.84 per-fault), runbook 0.70, wrong merges 0.92.

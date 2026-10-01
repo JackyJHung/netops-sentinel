@@ -33,6 +33,7 @@ class PipelineConfig:
     silence_evidence: bool = True  # nodes that stop reporting become RCA candidates and splitting origins
     silence_min: int = 5  # minutes of every metric missing before a node counts as silent
     multi_root: bool = True  # declare more than one root per incident when the evidence says so
+    local_root_floor: float = 0.1  # score floor (x top) for declaring a root that has local evidence; 0.4 = milestone 3
     change_evidence: bool = True  # a deploy/config push on a node shortly before it alerts is an RCA signal
     change_lookback: int = 15  # minutes before a node's first alert that a change still counts
     change_weight: float = 0.25  # RCA score weight of "changed shortly before alerting"
@@ -96,7 +97,9 @@ def run_pipeline(
     runbooks = load_runbooks()
     fmt = lambda t: sim.timestamp(t).strftime("%H:%M")  # noqa: E731
     for inc in incidents:
-        inc.root_causes = rank_root_causes(inc, topo, weights={"change": config.change_weight}, multi_root=config.multi_root)
+        inc.root_causes = rank_root_causes(
+            inc, topo, weights={"change": config.change_weight}, multi_root=config.multi_root, local_root_floor=config.local_root_floor
+        )
         inc.runbooks = {node: match_runbook(inc, runbooks, miner, node) for node in inc.roots}
         inc.runbook = inc.runbooks.get(inc.root_cause) or match_runbook(inc, runbooks, miner)
     apply_change_hold(incidents, sim.changes, config.change_lookback, config.change_hold, config.hold_per_root, topo)
