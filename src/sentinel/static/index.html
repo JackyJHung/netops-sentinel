@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetOps Sentinel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0f1419; --panel:#171e26; --line:#26313d; --text:#dfe6ee; --muted:#8a98a8; --accent:#4fa3ff; --crit:#ff6b6b; --warn:#f5b642; --ok:#3ecf8e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--line); }
+  h1 { font-size:17px; margin:0; } h1 span { color:var(--muted); font-weight:400; }
+  .controls { display:flex; gap:8px; align-items:center; }
+  input, select, button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font:inherit; }
+  button { background:var(--accent); border:none; color:#04121f; font-weight:600; cursor:pointer; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; padding:14px 20px; }
+  .kpi { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi b { display:block; font-size:20px; } .kpi small { color:var(--muted); }
+  main { display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:14px; padding:0 20px 20px; }
+  @media (max-width: 800px) { main { grid-template-columns:1fr; } }
+  .list, .detail { background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .list { max-height:75vh; overflow:auto; }
+  .inc { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .inc:hover, .inc.active { background:#1d2631; }
+  .inc .top { display:flex; justify-content:space-between; gap:8px; }
+  .sev { font-size:11px; font-weight:700; padding:1px 6px; border-radius:4px; }
+  .sev.critical { background:var(--crit); color:#200; } .sev.warning { background:var(--warn); color:#220; }
+  .muted { color:var(--muted); font-size:12px; }
+  .detail { padding:16px; min-width:0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  ol { padding-left:20px; } h3 { font-size:14px; margin:18px 0 6px; }
+  .chartbox { position:relative; height:260px; }
+  .tag { font-size:11px; padding:0 5px; border-radius:4px; border:1px solid var(--line); color:var(--muted); margin-left:4px; }
+  .tag.root { border-color:var(--accent); color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>NetOps Sentinel <span>AIOps incident console</span></h1>
+  <div class="controls">
+    <label class="muted">seed <input id="seed" type="number" value="42" style="width:70px"></label>
+    <select id="config"><option value="sentinel">sentinel</option><option value="static">static baseline</option></select>
+    <select id="scenario" title="clean: one fault at a time, complete telemetry. hard: concurrent faults, missing telemetry, benign events."><option value="clean">clean</option><option value="hard">hard</option></select>
+    <button id="run">Simulate day</button>
+  </div>
+</header>
+<section class="kpis" id="kpis"></section>
+<main>
+  <div class="list" id="list"></div>
+  <div class="detail" id="detail"><p class="muted">Select an incident.</p></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let chart;
+const api = (p, opts) => fetch(p, opts).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function loadKpis() {
+  const e = await api("/evaluation");
+  const k = [["Precision", e.precision], ["Recall", e.recall], ["F1", e.f1], ["MTTD (min)", e.mttd_min],
+             ["RCA top-1", e.rca_top1], ["Runbook match", e.classification_acc], ["Alerts", e.n_alerts], ["Incidents", e.n_incidents]];
+  if (e.benign_events) k.push(["Benign paged", `${e.benign_paged}/${e.benign_events}`]);
+  $("kpis").innerHTML = k.map(([n, v]) => `<div class="kpi"><b>${v ?? "n/a"}</b><small>${n}</small></div>`).join("");
+}
+
+async function loadList() {
+  const incs = await api("/incidents");
+  $("list").innerHTML = incs.map(i => `
+    <div class="inc" data-id="${i.incident_id}">
+      <div class="top"><b>${i.incident_id}</b><span>${i.suppressed ? '<span class="tag">not paged</span>' : i.held ? '<span class="tag">held</span>' : ""}<span class="sev ${i.severity}">${i.severity}</span></span></div>
+      <div>${i.roots.map(esc).join(" + ")} · ${esc(i.runbook?.title)}</div>
+      <div class="muted">${i.start_time.slice(11,16)}–${i.end_time.slice(11,16)} · ${i.n_alerts} alerts · ${i.nodes.length} nodes</div>
+    </div>`).join("") || `<p class="muted" style="padding:12px">No incidents.</p>`;
+  document.querySelectorAll(".inc").forEach(el => el.onclick = () => show(el.dataset.id));
+  if (incs.length) show(incs[0].incident_id);
+}
+
+async function show(id) {
+  document.querySelectorAll(".inc").forEach(el => el.classList.toggle("active", el.dataset.id === id));
+  const i = await api(`/incidents/${id}`);
+  const rb = i.runbook || {};
+  $("detail").innerHTML = `
+    <h2 style="margin:0 0 6px;font-size:16px">${i.incident_id}</h2>
+    <p>${esc(i.summary)}</p>
+    <h3>Root-cause candidates</h3>
+    <table><tr><th>node</th><th>score</th><th>why</th></tr>
+      ${i.root_causes.map(c => `<tr><td>${esc(c.node)}${c.declared ? '<span class="tag root">root</span>' : ""}${c.silent ? '<span class="tag">silent</span>' : ""}${c.change ? '<span class="tag">changed</span>' : ""}</td><td>${c.score}</td><td>${esc(c.reason)}</td></tr>`).join("")}
+    </table>
+    ${i.silences.length ? `<p class="muted">Telemetry lost: ${i.silences.map(s => `${esc(s.node)} for ${s.end - s.start} min`).join(", ")}</p>` : ""}
+    ${i.changes.length ? `<p class="muted">Recent changes: ${i.changes.map(c => `${esc(c.kind.replace("_", " "))} to ${esc(c.node)} at +${c.t - i.start} min`).join(", ")}</p>` : ""}
+    <h3>Root node metrics: ${esc(i.root_cause)}</h3>
+    <div class="chartbox"><canvas id="chart"></canvas></div>
+    ${i.roots.map(n => { const r = i.runbooks[n] || rb; return `
+    <h3>Runbook for ${esc(n)}: ${esc(r.id)} · ${esc(r.title)}</h3>
+    <ol>${(r.steps || []).map(s => `<li>${esc(s)}</li>`).join("")}</ol>
+    ${r.auto_remediation ? `<p class="muted">Auto-remediation hook: <code>${esc(r.auto_remediation)}</code></p>` : ""}`; }).join("")}
+    <h3>Alert timeline</h3>
+    <table><tr><th>time</th><th>node</th><th>signal</th><th>detector</th><th>sev</th></tr>
+      ${i.alerts.map(a => `<tr><td>+${a.start - i.start}m</td><td>${esc(a.node)}</td><td>${esc(a.description)}</td><td>${esc(a.detector)}</td><td>${a.severity}</td></tr>`).join("")}
+    </table>`;
+  drawChart(i);
+}
+
+async function drawChart(i) {
+  if (typeof Chart === "undefined") {  // CDN unreachable: keep the rest of the console usable
+    $("chart").parentElement.outerHTML = '<p class="muted">Chart.js could not be loaded, so metrics are not charted.</p>';
+    return;
+  }
+  const node = i.root_cause;
+  const topo = await api("/topology");
+  const kind = topo.nodes.find(n => n.name === node)?.kind;
+  const metrics = kind === "service" ? ["cpu_pct","mem_pct","latency_ms","error_rate_pct"] : ["cpu_pct","mem_pct","latency_ms","packet_loss_pct"];
+  const lo = Math.max(0, i.start - 60), hi = i.end + 60;
+  const series = await Promise.all(metrics.map(m => api(`/series/${node}/${m}`)));
+  const labels = series[0].t.slice(lo, hi);
+  const colors = ["#4fa3ff", "#3ecf8e", "#f5b642", "#ff6b6b"];
+  if (chart) chart.destroy();
+  chart = new Chart($("chart"), {
+    type: "line",
+    data: { labels, datasets: series.map((s, k) => ({ label: s.metric, data: s.values.slice(lo, hi), borderColor: colors[k], pointRadius: 0, borderWidth: 1.5, yAxisID: s.metric === "latency_ms" ? "y2" : "y" })) },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { labels: { color: "#dfe6ee" } } },
+      scales: { x: { ticks: { color: "#8a98a8", maxTicksLimit: 10 }, grid: { color: "#26313d" } },
+                y: { ticks: { color: "#8a98a8" }, grid: { color: "#26313d" }, title: { display: true, text: "%", color: "#8a98a8" } },
+                y2: { position: "right", ticks: { color: "#8a98a8" }, grid: { display: false }, title: { display: true, text: "ms", color: "#8a98a8" } } } }
+  });
+}
+
+$("run").onclick = async () => {
+  $("run").disabled = true; $("run").textContent = "Running…";
+  try {
+    await api("/simulate", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seed: +$("seed").value, config: $("config").value, scenario: $("scenario").value }) });
+    await Promise.all([loadKpis(), loadList()]);
+  } finally { $("run").disabled = false; $("run").textContent = "Simulate day"; }
+};
+loadKpis(); loadList();
+</script>
+</body>
+</html>

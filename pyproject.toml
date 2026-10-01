@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netops-sentinel"
+version = "0.1.0"
+description = "AIOps for network and service telemetry: anomaly detection, log template mining, alert correlation, root-cause analysis, and runbook recommendation."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Jacky Hung" }]
+license = { text = "MIT" }
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "pyyaml>=6.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.5"]
+
+[project.scripts]
+sentinel = "sentinel.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sentinel = ["data/*.yaml", "static/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+
+[tool.ruff.lint]
+# Pin the rule set explicitly: ruff 0.16 widened its defaults, and CI installs the latest ruff.
+select = ["E4", "E7", "E9", "F"]
