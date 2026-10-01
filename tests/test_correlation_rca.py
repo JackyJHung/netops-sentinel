@@ -208,3 +208,52 @@ def test_no_local_evidence_still_needs_the_floor():
     alerts = [a for a in _router_cpu_with_concurrent_leak() if a.signal != "mem_pct"]  # cache-1 only has latency now
     (inc,) = correlate(alerts, topo)
     assert [c["node"] for c in rank_root_causes(inc, topo) if c["declared"]] == ["core-rtr-1"]
+
+
+# ---------------------------------------------------------------- runbook for a silent root (inferred from dependents)
+def _silent_root_incident(child_alerts):
+    topo = Topology.default()
+    (inc,) = correlate(child_alerts, topo, silences=[Silence("dist-sw-1", 99, 135)])
+    inc.root_causes = rank_root_causes(inc, topo)
+    assert inc.root_cause == "dist-sw-1"
+    return inc, topo
+
+
+def test_silent_root_with_lossy_dependents_gets_the_link_runbook():
+    inc, topo = _silent_root_incident([
+        _a(1, "access-sw-1", 100, 130, signal="packet_loss_pct"),
+        _a(2, "access-sw-2", 101, 130, signal="packet_loss_pct"),
+        _a(3, "cache-1", 102, 130, signal="error_rate_pct"),
+    ])
+    rb = match_runbook(inc, load_runbooks(), topo=topo)
+    assert rb["id"] == "RB-LINK" and rb["matched_on"] == "dependents"
+
+
+def test_silent_root_with_slow_dependents_gets_the_cpu_runbook():
+    inc, topo = _silent_root_incident([_a(1, "access-sw-1", 100, 130), _a(2, "access-sw-2", 101, 130)])  # latency only
+    rb = match_runbook(inc, load_runbooks(), topo=topo)
+    assert rb["id"] == "RB-CPU" and rb["matched_on"] == "dependents"
+
+
+def test_own_evidence_beats_dependents():
+    topo = Topology.default()
+    alerts = [
+        _a(1, "dist-sw-1", 99, 130, signal="cpu_pct", sev="critical"),
+        _a(2, "access-sw-1", 100, 130, signal="packet_loss_pct"),
+        _a(3, "access-sw-2", 101, 130, signal="packet_loss_pct"),
+    ]
+    (inc,) = correlate(alerts, topo)
+    inc.root_causes = rank_root_causes(inc, topo)
+    rb = match_runbook(inc, load_runbooks(), topo=topo)
+    assert rb["id"] == "RB-CPU" and rb["matched_on"] == "root"
+
+
+def test_dependents_never_pick_a_runbook_for_the_wrong_device_type():
+    # a silent switch whose dependents show latency and errors (the latency-degradation signature) must not
+    # get the service-only slow-dependency runbook
+    inc, topo = _silent_root_incident([
+        _a(1, "web-1", 100, 130),
+        _a(2, "web-1", 101, 130, signal="error_rate_pct"),
+    ])
+    rb = match_runbook(inc, load_runbooks(), topo=topo)
+    assert rb["id"] != "RB-LAT"

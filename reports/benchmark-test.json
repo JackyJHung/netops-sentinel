@@ -355,6 +355,64 @@
                 "hi": 0.964
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 0.546,
+                "lo": 0.493,
+                "hi": 0.597
+              },
+              "mttd_min": {
+                "mean": 3.369,
+                "lo": 2.187,
+                "hi": 4.724
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.926,
+                "lo": 0.888,
+                "hi": 0.964
+              }
+            }
           }
         },
         "robust_z+ewma": {
@@ -645,6 +703,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 0.96,
+                "lo": 0.938,
+                "hi": 0.978
+              },
+              "mttd_min": {
+                "mean": 4.847,
+                "lo": 3.748,
+                "hi": 5.958
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.767,
+                "lo": 0.715,
+                "hi": 0.817
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 0.96,
@@ -989,6 +1105,64 @@
                 "hi": 0.797
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 0.982,
+                "lo": 0.967,
+                "hi": 0.996
+              },
+              "mttd_min": {
+                "mean": 5.205,
+                "lo": 4.123,
+                "hi": 6.26
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.75,
+                "lo": 0.703,
+                "hi": 0.797
+              }
+            }
           }
         },
         "+forecast": {
@@ -1279,6 +1453,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 0.989,
+                "lo": 0.977,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.87,
+                "lo": 1.515,
+                "hi": 2.209
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.977,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 0.989,
@@ -1623,6 +1855,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+incident splitting": {
@@ -1913,6 +2203,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 1.0,
@@ -2257,6 +2605,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+multi-root RCA": {
@@ -2547,6 +2953,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.996,
+                "lo": 0.989,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 1.0,
@@ -2891,6 +3355,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+change events": {
@@ -3181,6 +3703,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 1.0,
@@ -3525,6 +4105,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+hold per root cause": {
@@ -3842,6 +4480,439 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          }
+        },
+        "+local-evidence roots": {
+          "counts": {
+            "faults": 273,
+            "detected": 273,
+            "incidents": 275,
+            "matched": 275,
+            "alerts": 1472,
+            "benign": 0,
+            "pairs_unrelated": 0,
+            "pairs_same": 0,
+            "extra_roots": 0,
+            "suppressed": 0,
+            "suppressed_real": 0
+          },
+          "overall": {
+            "precision": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "recall": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "mttd_min": {
+              "mean": 1.956,
+              "lo": 1.632,
+              "hi": 2.282
+            },
+            "rca_top1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "alert_compression": {
+              "mean": 5.353,
+              "lo": 5.065,
+              "hi": 5.646
+            },
+            "n_alerts": {
+              "mean": 49.067,
+              "lo": 46.032,
+              "hi": 51.867
+            },
+            "n_incidents": {
+              "mean": 9.167,
+              "lo": 8.9,
+              "hi": 9.433
+            },
+            "benign_paged": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "wrong_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "same_branch_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "extra_root_precision": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 70,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "link_flap": {
+              "n_faults": 67,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.433,
+                "lo": 0.0,
+                "hi": 0.973
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "memory_leak": {
+              "n_faults": 66,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 7.652,
+                "lo": 7.203,
+                "hi": 8.145
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 70,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 67,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.269,
+                "lo": 1.535,
+                "hi": 2.942
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "hard": {
+              "n_faults": 206,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.854,
+                "lo": 1.444,
+                "hi": 2.255
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
           }
         },
         "sentinel": {
@@ -4132,6 +5203,64 @@
               }
             },
             "no change": {
+              "n_faults": 273,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.956,
+                "lo": 1.632,
+                "hi": 2.282
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "root reporting": {
               "n_faults": 273,
               "recall": {
                 "mean": 1.0,
@@ -4490,6 +5619,64 @@
                 "hi": 0.847
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.625,
+                "lo": 0.454,
+                "hi": 0.783
+              },
+              "mttd_min": {
+                "mean": 1.9,
+                "lo": 0.805,
+                "hi": 4.572
+              },
+              "rca_top1": {
+                "mean": 0.033,
+                "lo": 0.0,
+                "hi": 0.111
+              },
+              "rca_top3": {
+                "mean": 0.033,
+                "lo": 0.0,
+                "hi": 0.111
+              },
+              "classification_acc": {
+                "mean": 0.5,
+                "lo": 0.273,
+                "hi": 0.719
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.556,
+                "lo": 0.506,
+                "hi": 0.608
+              },
+              "mttd_min": {
+                "mean": 3.941,
+                "lo": 2.823,
+                "hi": 5.146
+              },
+              "rca_top1": {
+                "mean": 0.936,
+                "lo": 0.897,
+                "hi": 0.971
+              },
+              "rca_top3": {
+                "mean": 0.995,
+                "lo": 0.984,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.768,
+                "lo": 0.728,
+                "hi": 0.812
+              }
+            }
           }
         },
         "robust_z+ewma": {
@@ -4805,6 +5992,64 @@
                 "mean": 0.6,
                 "lo": 0.546,
                 "hi": 0.658
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.917,
+                "lo": 0.824,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.727,
+                "lo": 0.583,
+                "hi": 0.894
+              },
+              "rca_top1": {
+                "mean": 0.136,
+                "lo": 0.048,
+                "hi": 0.242
+              },
+              "rca_top3": {
+                "mean": 0.159,
+                "lo": 0.051,
+                "hi": 0.28
+              },
+              "classification_acc": {
+                "mean": 0.386,
+                "lo": 0.222,
+                "hi": 0.579
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.937,
+                "lo": 0.911,
+                "hi": 0.959
+              },
+              "mttd_min": {
+                "mean": 4.053,
+                "lo": 3.166,
+                "hi": 5.02
+              },
+              "rca_top1": {
+                "mean": 0.921,
+                "lo": 0.893,
+                "hi": 0.948
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.632,
+                "lo": 0.588,
+                "hi": 0.676
               }
             }
           }
@@ -5124,6 +6369,64 @@
                 "hi": 0.615
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.917,
+                "lo": 0.824,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.727,
+                "lo": 0.583,
+                "hi": 0.894
+              },
+              "rca_top1": {
+                "mean": 0.136,
+                "lo": 0.048,
+                "hi": 0.242
+              },
+              "rca_top3": {
+                "mean": 0.159,
+                "lo": 0.051,
+                "hi": 0.28
+              },
+              "classification_acc": {
+                "mean": 0.386,
+                "lo": 0.222,
+                "hi": 0.579
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.975,
+                "lo": 0.959,
+                "hi": 0.989
+              },
+              "mttd_min": {
+                "mean": 4.242,
+                "lo": 3.482,
+                "hi": 5.039
+              },
+              "rca_top1": {
+                "mean": 0.907,
+                "lo": 0.878,
+                "hi": 0.936
+              },
+              "rca_top3": {
+                "mean": 0.997,
+                "lo": 0.991,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.596,
+                "lo": 0.548,
+                "hi": 0.645
+              }
+            }
           }
         },
         "+forecast": {
@@ -5439,6 +6742,64 @@
                 "mean": 0.698,
                 "lo": 0.645,
                 "hi": 0.75
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.917,
+                "lo": 0.824,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.705,
+                "lo": 0.531,
+                "hi": 0.891
+              },
+              "rca_top1": {
+                "mean": 0.136,
+                "lo": 0.048,
+                "hi": 0.242
+              },
+              "rca_top3": {
+                "mean": 0.159,
+                "lo": 0.051,
+                "hi": 0.28
+              },
+              "classification_acc": {
+                "mean": 0.386,
+                "lo": 0.222,
+                "hi": 0.579
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.984,
+                "lo": 0.968,
+                "hi": 0.995
+              },
+              "mttd_min": {
+                "mean": 1.763,
+                "lo": 1.475,
+                "hi": 2.063
+              },
+              "rca_top1": {
+                "mean": 0.919,
+                "lo": 0.895,
+                "hi": 0.944
+              },
+              "rca_top3": {
+                "mean": 0.997,
+                "lo": 0.992,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.755,
+                "lo": 0.72,
+                "hi": 0.789
               }
             }
           }
@@ -5758,6 +7119,64 @@
                 "hi": 0.741
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.208,
+                "lo": 0.677,
+                "hi": 1.716
+              },
+              "rca_top1": {
+                "mean": 0.208,
+                "lo": 0.102,
+                "hi": 0.341
+              },
+              "rca_top3": {
+                "mean": 0.25,
+                "lo": 0.125,
+                "hi": 0.386
+              },
+              "classification_acc": {
+                "mean": 0.417,
+                "lo": 0.25,
+                "hi": 0.614
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.774,
+                "lo": 1.525,
+                "hi": 2.047
+              },
+              "rca_top1": {
+                "mean": 0.923,
+                "lo": 0.898,
+                "hi": 0.946
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.738,
+                "lo": 0.704,
+                "hi": 0.772
+              }
+            }
           }
         },
         "+incident splitting": {
@@ -6073,6 +7492,64 @@
                 "mean": 0.787,
                 "lo": 0.741,
                 "hi": 0.835
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.208,
+                "lo": 0.677,
+                "hi": 1.716
+              },
+              "rca_top1": {
+                "mean": 0.229,
+                "lo": 0.111,
+                "hi": 0.361
+              },
+              "rca_top3": {
+                "mean": 0.25,
+                "lo": 0.125,
+                "hi": 0.386
+              },
+              "classification_acc": {
+                "mean": 0.417,
+                "lo": 0.245,
+                "hi": 0.61
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.84,
+                "lo": 1.584,
+                "hi": 2.104
+              },
+              "rca_top1": {
+                "mean": 0.931,
+                "lo": 0.905,
+                "hi": 0.955
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.832,
+                "lo": 0.796,
+                "hi": 0.864
               }
             }
           }
@@ -6392,6 +7869,64 @@
                 "hi": 0.818
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.208,
+                "lo": 0.677,
+                "hi": 1.716
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.897,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.25,
+                "lo": 0.125,
+                "hi": 0.405
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.84,
+                "lo": 1.584,
+                "hi": 2.104
+              },
+              "rca_top1": {
+                "mean": 0.942,
+                "lo": 0.916,
+                "hi": 0.966
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.821,
+                "lo": 0.785,
+                "hi": 0.855
+              }
+            }
           }
         },
         "+multi-root RCA": {
@@ -6707,6 +8242,64 @@
                 "mean": 0.831,
                 "lo": 0.779,
                 "hi": 0.882
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.208,
+                "lo": 0.677,
+                "hi": 1.716
+              },
+              "rca_top1": {
+                "mean": 0.938,
+                "lo": 0.872,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.25,
+                "lo": 0.132,
+                "hi": 0.38
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.84,
+                "lo": 1.584,
+                "hi": 2.104
+              },
+              "rca_top1": {
+                "mean": 0.967,
+                "lo": 0.943,
+                "hi": 0.986
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.909,
+                "lo": 0.878,
+                "hi": 0.938
               }
             }
           }
@@ -7026,6 +8619,64 @@
                 "hi": 0.887
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.25,
+                "lo": 0.731,
+                "hi": 1.727
+              },
+              "rca_top1": {
+                "mean": 0.938,
+                "lo": 0.872,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.25,
+                "lo": 0.132,
+                "hi": 0.38
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.84,
+                "lo": 1.584,
+                "hi": 2.104
+              },
+              "rca_top1": {
+                "mean": 0.97,
+                "lo": 0.948,
+                "hi": 0.989
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.912,
+                "lo": 0.88,
+                "hi": 0.94
+              }
+            }
           }
         },
         "+change events": {
@@ -7341,6 +8992,64 @@
                 "mean": 0.811,
                 "lo": 0.748,
                 "hi": 0.87
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.25,
+                "lo": 0.731,
+                "hi": 1.727
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.902,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.208,
+                "lo": 0.105,
+                "hi": 0.319
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.84,
+                "lo": 1.584,
+                "hi": 2.104
+              },
+              "rca_top1": {
+                "mean": 0.981,
+                "lo": 0.965,
+                "hi": 0.994
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.917,
+                "lo": 0.885,
+                "hi": 0.947
               }
             }
           }
@@ -7660,6 +9369,64 @@
                 "hi": 0.87
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.375,
+                "lo": 3.327,
+                "hi": 5.582
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.902,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.208,
+                "lo": 0.105,
+                "hi": 0.319
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.733,
+                "lo": 4.312,
+                "hi": 5.179
+              },
+              "rca_top1": {
+                "mean": 0.981,
+                "lo": 0.965,
+                "hi": 0.994
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.917,
+                "lo": 0.885,
+                "hi": 0.947
+              }
+            }
           }
         },
         "+hold per root cause": {
@@ -7977,9 +9744,67 @@
                 "hi": 0.87
               }
             }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.771,
+                "lo": 2.674,
+                "hi": 5.024
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.902,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.208,
+                "lo": 0.105,
+                "hi": 0.319
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.273,
+                "lo": 3.89,
+                "hi": 4.655
+              },
+              "rca_top1": {
+                "mean": 0.981,
+                "lo": 0.965,
+                "hi": 0.994
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.917,
+                "lo": 0.885,
+                "hi": 0.947
+              }
+            }
           }
         },
-        "sentinel": {
+        "+local-evidence roots": {
           "counts": {
             "faults": 413,
             "detected": 411,
@@ -8292,6 +10117,439 @@
                 "mean": 0.835,
                 "lo": 0.785,
                 "hi": 0.881
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.771,
+                "lo": 2.674,
+                "hi": 5.024
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.902,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.208,
+                "lo": 0.105,
+                "hi": 0.319
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.237,
+                "lo": 3.863,
+                "hi": 4.615
+              },
+              "rca_top1": {
+                "mean": 0.989,
+                "lo": 0.975,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.937,
+                "lo": 0.911,
+                "hi": 0.959
+              }
+            }
+          }
+        },
+        "sentinel": {
+          "counts": {
+            "faults": 413,
+            "detected": 411,
+            "incidents": 346,
+            "matched": 334,
+            "alerts": 2271,
+            "benign": 83,
+            "pairs_unrelated": 64,
+            "pairs_same": 75,
+            "extra_roots": 55,
+            "suppressed": 71,
+            "suppressed_real": 0
+          },
+          "overall": {
+            "precision": {
+              "mean": 0.965,
+              "lo": 0.946,
+              "hi": 0.983
+            },
+            "recall": {
+              "mean": 0.995,
+              "lo": 0.988,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 0.98,
+              "lo": 0.97,
+              "hi": 0.989
+            },
+            "mttd_min": {
+              "mean": 4.182,
+              "lo": 3.821,
+              "hi": 4.542
+            },
+            "rca_top1": {
+              "mean": 0.985,
+              "lo": 0.972,
+              "hi": 0.995
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 0.934,
+              "lo": 0.912,
+              "hi": 0.955
+            },
+            "alert_compression": {
+              "mean": 6.564,
+              "lo": 6.169,
+              "hi": 7.006
+            },
+            "n_alerts": {
+              "mean": 75.7,
+              "lo": 71.498,
+              "hi": 80.301
+            },
+            "n_incidents": {
+              "mean": 11.533,
+              "lo": 11.0,
+              "hi": 12.133
+            },
+            "benign_paged": {
+              "mean": 0.145,
+              "lo": 0.076,
+              "hi": 0.222
+            },
+            "wrong_merge": {
+              "mean": 0.062,
+              "lo": 0.015,
+              "hi": 0.119
+            },
+            "same_branch_merge": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "extra_root_precision": {
+              "mean": 0.945,
+              "lo": 0.887,
+              "hi": 1.0
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 111,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.117,
+                "lo": 2.389,
+                "hi": 3.884
+              },
+              "rca_top1": {
+                "mean": 0.991,
+                "lo": 0.972,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.964,
+                "lo": 0.922,
+                "hi": 1.0
+              }
+            },
+            "link_flap": {
+              "n_faults": 112,
+              "recall": {
+                "mean": 0.991,
+                "lo": 0.971,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.072,
+                "lo": 2.422,
+                "hi": 3.788
+              },
+              "rca_top1": {
+                "mean": 0.991,
+                "lo": 0.971,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.982,
+                "lo": 0.955,
+                "hi": 1.0
+              }
+            },
+            "memory_leak": {
+              "n_faults": 96,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 8.125,
+                "lo": 7.233,
+                "hi": 9.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.979,
+                "lo": 0.951,
+                "hi": 1.0
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 94,
+              "recall": {
+                "mean": 0.989,
+                "lo": 0.965,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.71,
+                "lo": 2.096,
+                "hi": 3.374
+              },
+              "rca_top1": {
+                "mean": 0.957,
+                "lo": 0.905,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.796,
+                "lo": 0.722,
+                "hi": 0.867
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 111,
+              "recall": {
+                "mean": 0.991,
+                "lo": 0.971,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.3,
+                "lo": 3.628,
+                "hi": 4.922
+              },
+              "rca_top1": {
+                "mean": 0.982,
+                "lo": 0.953,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.936,
+                "lo": 0.897,
+                "hi": 0.973
+              }
+            },
+            "hard": {
+              "n_faults": 302,
+              "recall": {
+                "mean": 0.997,
+                "lo": 0.99,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.14,
+                "lo": 3.664,
+                "hi": 4.626
+              },
+              "rca_top1": {
+                "mean": 0.987,
+                "lo": 0.973,
+                "hi": 0.997
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.934,
+                "lo": 0.907,
+                "hi": 0.958
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 158,
+              "recall": {
+                "mean": 0.994,
+                "lo": 0.979,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 7.401,
+                "lo": 6.705,
+                "hi": 8.107
+              },
+              "rca_top1": {
+                "mean": 0.994,
+                "lo": 0.98,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.981,
+                "lo": 0.959,
+                "hi": 1.0
+              }
+            },
+            "no change": {
+              "n_faults": 255,
+              "recall": {
+                "mean": 0.996,
+                "lo": 0.988,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.193,
+                "lo": 1.855,
+                "hi": 2.563
+              },
+              "rca_top1": {
+                "mean": 0.98,
+                "lo": 0.959,
+                "hi": 0.996
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.906,
+                "lo": 0.871,
+                "hi": 0.938
+              }
+            }
+          },
+          "by_root_state": {
+            "root went silent": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.771,
+                "lo": 2.674,
+                "hi": 5.024
+              },
+              "rca_top1": {
+                "mean": 0.958,
+                "lo": 0.902,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.917,
+                "lo": 0.845,
+                "hi": 0.98
+              }
+            },
+            "root reporting": {
+              "n_faults": 365,
+              "recall": {
+                "mean": 0.995,
+                "lo": 0.986,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.237,
+                "lo": 3.863,
+                "hi": 4.615
+              },
+              "rca_top1": {
+                "mean": 0.989,
+                "lo": 0.975,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.937,
+                "lo": 0.911,
+                "hi": 0.959
               }
             }
           }

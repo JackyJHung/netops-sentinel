@@ -36,7 +36,7 @@ flowchart LR
 | Detect (logs) | `logs.py` | Masks IPs, numbers, and interface IDs, clusters lines into templates, then flags new warning+ event types, and bursts that are both large and improbable under the template's own Poisson rate. |
 | Correlate | `correlation.py` | Groups alerts that overlap in time and are topologically related (union-find), then splits groups whose origins sit on unrelated branches with separate onsets. Nodes whose telemetry goes dark are attached as evidence. |
 | Root cause | `rca.py` | Scores each alerting or silent node by how many other alerting nodes sit downstream of it, how early it alerted, how loud it is, and whether it was changed just before. Declares more than one root when concurrent faults share an incident. Returns a ranked list with reasons. |
-| Remediate | `runbooks.py`, `data/runbooks.yaml` | Matches metric signals and log keywords on the root node to a runbook with steps and an auto-remediation hook. |
+| Remediate | `runbooks.py`, `data/runbooks.yaml` | Matches metric signals and log keywords on the root node to a runbook for its device type, with steps and an auto-remediation hook. A root that went silent is matched on its dependents' symptoms. |
 | Measure | `evaluation.py` | Precision, recall, F1, MTTD, RCA top-1/top-3, runbook classification accuracy, alert compression. Pooled over a held-out seed split with bootstrap confidence intervals, broken down by fault kind and intensity. |
 
 ## Results
@@ -61,7 +61,8 @@ About 9 faults per day, 273 in total.
 | + Change events (RCA signal) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 | + Change-aware paging | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 | + Hold per root cause | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
-| + Local evidence declares roots (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Local evidence declares roots | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Runbook symptom signatures (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 
 What the ablation shows:
 
@@ -89,7 +90,8 @@ The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py
 | + Change events (RCA signal) | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 | + Change-aware paging | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.7 [4.3, 5.1] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
 | + Hold per root cause | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.2 [3.9, 4.6] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
-| + Local evidence declares roots (full) | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.2 [3.8, 4.5] | 0.98 [0.97, 0.99] | 1.00 [1.00, 1.00] | 0.85 [0.81, 0.89] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
+| + Local evidence declares roots | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.2 [3.8, 4.5] | 0.98 [0.97, 0.99] | 1.00 [1.00, 1.00] | 0.85 [0.81, 0.89] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
+| + Runbook symptom signatures (full) | 0.96 [0.95, 0.98] | 0.99 [0.99, 1.00] | 4.2 [3.8, 4.5] | 0.98 [0.97, 0.99] | 1.00 [1.00, 1.00] | 0.93 [0.91, 0.95] | 0.06 [0.01, 0.12] | 0.14 [0.08, 0.22] |
 
 RCA is scored per fault: a fault is a top-1 hit if its root is first in the incident that carries its evidence, once the roots of *other* faults in that incident are set aside. Under the older per-incident metric (one root per incident, so a merged pair always loses one fault) the log-mining row scores 0.62; the metric change alone accounts for 0.62 to 0.84, and the pipeline changes for 0.84 to 0.96. Wrong merges: share of concurrent faults on unrelated branches that ended up in one incident.
 
@@ -102,6 +104,7 @@ What breaks, and what fixed it:
 - **A change just before a node alerts is evidence.** The change log (deploys, config pushes) is attached to incidents: a change on a node in the 15 min before it alerted adds to its RCA score, counts as local evidence for declaring a second root, and is named in the summary. For the 158 faults that were caused by a change, top-1 goes 0.95 to 0.99 and runbook match 0.83 to 0.87. It is not free: harmless changes near incidents add a few false extra roots (extra-root precision 0.98 to 0.92), which the tuning split did not show.
 - **Change-aware paging stops benign pages, at a price in detection time.** When a recorded change hit an incident's node just before it started, the page is held for 8 min and dropped if every alert has cleared (a rolling restart recovers, a bad deploy does not). Precision 0.80 to 0.96, benign events paged 100% to 14% (most of the rest were never logged as changes), recall unchanged, and none of the 71 suppressed incidents was a real fault. The cost: faults caused by a change page about 6 min later than without the hold. **Holding per root cause** (each declared root's alerts are held or not on their own, so a concurrent fault does not wait for its partner's change) brings MTTD back from 4.7 to 4.2 min: change-caused faults 7.4 min (1.7 without the hold), other faults 2.2 min (1.8). Turn the hold off with `PipelineConfig(change_hold=0)` if that trade is wrong for you.
 - **Local evidence can name a root on its own.** A node with CPU or memory symptoms, or a change just before it alerted, no longer needs downstream alerts to clear the score floor for being declared a second root (it only needs 10% of the top score instead of 40%). 7 more roots declared on the test days, all correct: RCA top-1 0.978 to 0.985, runbook match 0.835 to 0.852.
+- **A silent root gets a runbook from its dependents' symptoms.** A device that went dark has no alerts to match a runbook on, so it used to get the generic one. Each runbook now also describes what its fault looks like downstream (a link flap drops packets and resets connections, a CPU-bound router mainly adds latency) and which device types it applies to. Runbook match for the 48 test faults whose root went silent: 0.21 to 0.92; overall 0.85 to 0.93.
 - **Missing telemetry does not cause false alerts or blind the detectors**: every detector treats a missing point as "no evidence" ([DESIGN D10](docs/DESIGN.md)).
 
 How the numbers are produced (details and alternatives in [`docs/DESIGN.md`](docs/DESIGN.md)):

@@ -23,7 +23,8 @@ LABELS = {
     "+change events": "+ Change events (RCA signal)",
     "+change-aware paging": "+ Change-aware paging",
     "+hold per root cause": "+ Hold per root cause",
-    "sentinel": "+ Local evidence declares roots (full)",
+    "+local-evidence roots": "+ Local evidence declares roots",
+    "sentinel": "+ Runbook symptom signatures (full)",
 }
 HEADERS = {
     "precision": "Precision", "recall": "Recall", "f1": "F1", "mttd_min": "MTTD (min)", "rca_top1": "RCA top-1",

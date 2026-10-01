@@ -1,12 +1,18 @@
 # Runbooks are matched against the evidence on the top root-cause node.
 # signals: metric names that should be alerting on that node
 # keywords: substrings to look for in that node's log-alert templates
+# applies_to: network | service | any (a switch never gets the slow-query runbook)
+# dependents: what this fault looks like on the nodes that depend on the root, used when the root itself
+#   has no evidence (it went silent). Weights say how specific a symptom is: latency follows almost any
+#   fault, packet loss and connection errors point at the link.
 runbooks:
   - id: RB-CPU
     title: Control-plane / worker CPU saturation
     fault_kind: cpu_saturation
     signals: [cpu_pct]
     keywords: [CPUHOG, worker pool saturated]
+    applies_to: any
+    dependents: {signals: {latency_ms: 1}, keywords: []}
     steps:
       - "Confirm: `show processes cpu sorted` (network) or top/pprof on the service host."
       - Identify the hot process (IP Input usually means punted traffic, check for a broadcast storm or ACL logging).
@@ -19,6 +25,8 @@ runbooks:
     fault_kind: link_flap
     signals: [packet_loss_pct]
     keywords: [UPDOWN]
+    applies_to: network
+    dependents: {signals: {packet_loss_pct: 2, error_rate_pct: 2}, keywords: [connection reset]}
     steps:
       - "Check `show interface <if>` counters: CRC errors, input errors, resets."
       - Check optic light levels (`show interface transceiver`) and the physical cable.
@@ -31,6 +39,8 @@ runbooks:
     fault_kind: memory_leak
     signals: [mem_pct]
     keywords: [OutOfMemoryError, GC pause]
+    applies_to: service
+    dependents: {signals: {error_rate_pct: 1}, keywords: []}
     steps:
       - Capture a heap dump before restarting (evidence for the dev team).
       - Check recent deploys; a leak that starts right after a release points to that change.
@@ -43,6 +53,8 @@ runbooks:
     fault_kind: latency_degradation
     signals: [latency_ms]
     keywords: [slow query, upstream timeout]
+    applies_to: service
+    dependents: {signals: {latency_ms: 1, error_rate_pct: 1}, keywords: [upstream timeout]}
     steps:
       - Check the slow-query log and active locks on the dependency.
       - Look for missing indexes or a recent schema/query change.
@@ -55,6 +67,7 @@ runbooks:
     fault_kind: unknown
     signals: []
     keywords: []
+    applies_to: any
     steps:
       - Review the alert timeline and the top root-cause candidate's metrics.
       - Check recent changes (deploys, config pushes) around the incident start.

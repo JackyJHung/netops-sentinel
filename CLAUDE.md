@@ -21,7 +21,7 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 - `src/sentinel/logs.py`: Drain-style template miner, new-event-type and burst alerts; bursts must pass a Poisson tail test at a daily false-alarm budget
 - `src/sentinel/correlation.py`: union-find grouping by time window + topology, then split at origins (unrelated branches, separate onsets); `detect_silences` for nodes that went dark -> `Incident`
 - `src/sentinel/rca.py`: explain / earliness / intensity / recent-change scoring over alerting and silent nodes; `attach_changes`; declares multiple roots (unrelated branch, or local evidence: CPU/memory symptoms or a recent change)
-- `src/sentinel/runbooks.py` + `data/runbooks.yaml`: runbook matching and summaries
+- `src/sentinel/runbooks.py` + `data/runbooks.yaml`: runbook matching (per device type; a silent root is matched on its dependents' symptoms) and summaries
 - `src/sentinel/paging.py`: change-aware paging (hold a page after a recorded change, suppress it if it clears), decided per declared root; evaluation counts only paged incidents and measures MTTD to the page
 - `src/sentinel/evaluation.py`: seed splits, per-day scoring, pooled metrics, day-level bootstrap CIs, per-kind/intensity breakdowns, ablation ladder, parallel runner
 - `src/sentinel/api.py`, `static/index.html`: API and dashboard
@@ -42,14 +42,13 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 
 ## Current state (Oct 1, 2026)
 
-- Milestones 1-5 done, plus change-aware paging decided per root cause (DESIGN D27, D28) and local-evidence roots (D29).
-- Test split, full pipeline. Clean: P 1.00 / R 1.00 / MTTD 2.0 / RCA top-1 1.00 / runbook 1.00. Hard: P 0.96 / R 0.99 / MTTD 4.2 (7.4 for change-caused faults, 2.2 others; 1.8 without the hold) / RCA top-1 0.985 / top-3 1.00 / runbook 0.85 / wrong merges 0.06 / benign paged 0.14.
+- Milestones 1-5 done, plus change-aware paging decided per root cause (DESIGN D27, D28) local-evidence roots (D29), and runbook signatures for silent roots (D30).
+- Test split, full pipeline. Clean: P 1.00 / R 1.00 / MTTD 2.0 / RCA top-1 1.00 / runbook 1.00. Hard: P 0.96 / R 0.99 / MTTD 4.2 (7.4 for change-caused faults, 2.2 others; 1.8 without the hold) / RCA top-1 0.985 / top-3 1.00 / runbook 0.93 / wrong merges 0.06 / benign paged 0.14.
 - RCA is scored per fault with a filtered rank (DESIGN D14).
-- Known weaknesses: the change hold delays change-caused faults ~6 min (a partner fault whose root is not declared still waits); it suppressed one subtle real fault on tune; unlogged benign changes still page; harmless changes near incidents cost some extra-root precision (D25); silent roots get a generic runbook; EWMA absorbs slow ramps (D5); Poisson log rates; change lookback fitted to the simulator's own delay; small sample of unrelated concurrent pairs.
+- Known weaknesses: the change hold delays change-caused faults ~6 min (a partner fault whose root is not declared still waits); it suppressed one subtle real fault on tune; unlogged benign changes still page; harmless changes near incidents cost some extra-root precision (D25); EWMA absorbs slow ramps (D5); Poisson log rates; change lookback fitted to the simulator's own delay; small sample of unrelated concurrent pairs.
 
 ## Next steps (roadmap order)
 
-1. Infer a silent network device's runbook from its children's symptoms
-2. Streaming mode (Kafka or Redis Streams) with online detectors
-3. Prometheus / OpenTelemetry ingestion and a real change feed
-4. LLM-drafted incident summaries grounded in the alert timeline
+1. Streaming mode (Kafka or Redis Streams) with online detectors
+2. Prometheus / OpenTelemetry ingestion and a real change feed
+3. LLM-drafted incident summaries grounded in the alert timeline

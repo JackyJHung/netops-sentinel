@@ -60,15 +60,21 @@ ABLATION: dict[str, PipelineConfig] = {
     "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False, **_OFF),
     "+log mining": PipelineConfig(**_OFF, log_false_bursts_per_day=None),
     "+incident splitting": PipelineConfig(
-        silence_evidence=False, multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None
+        silence_evidence=False, multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None,
+        runbook_signatures=False,
     ),
-    "+silent nodes": PipelineConfig(multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None),
-    "+multi-root RCA": PipelineConfig(change_evidence=False, change_hold=0, log_false_bursts_per_day=None, local_root_floor=0.4),
-    "+calibrated log bursts": PipelineConfig(change_evidence=False, change_hold=0, local_root_floor=0.4),
-    "+change events": PipelineConfig(change_hold=0, local_root_floor=0.4),
-    "+change-aware paging": PipelineConfig(hold_per_root=False, local_root_floor=0.4),
-    "+hold per root cause": PipelineConfig(local_root_floor=0.4),
-    "sentinel": PipelineConfig(),  # + local evidence declares roots below the score floor
+    "+silent nodes": PipelineConfig(
+        multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None, runbook_signatures=False
+    ),
+    "+multi-root RCA": PipelineConfig(
+        change_evidence=False, change_hold=0, log_false_bursts_per_day=None, local_root_floor=0.4, runbook_signatures=False
+    ),
+    "+calibrated log bursts": PipelineConfig(change_evidence=False, change_hold=0, local_root_floor=0.4, runbook_signatures=False),
+    "+change events": PipelineConfig(change_hold=0, local_root_floor=0.4, runbook_signatures=False),
+    "+change-aware paging": PipelineConfig(hold_per_root=False, local_root_floor=0.4, runbook_signatures=False),
+    "+hold per root cause": PipelineConfig(local_root_floor=0.4, runbook_signatures=False),
+    "+local-evidence roots": PipelineConfig(runbook_signatures=False),
+    "sentinel": PipelineConfig(),  # + runbook symptom signatures (device type, silent roots matched on dependents)
 }
 
 OVERALL_METRICS = (
@@ -100,6 +106,7 @@ class FaultOutcome:
     incident_id: str | None = None  # the incident this fault was judged on
     rank: int | None = None  # filtered rank of the root in that incident (1 = top)
     after_change: bool = False  # ground truth: a change on the root caused this fault
+    root_silent: bool = False  # ground truth: the fault knocked its root off the monitoring network
 
     @property
     def bucket(self) -> str:
@@ -183,7 +190,8 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
         hits = [i for i in incidents if _detects(i, f, topo, silenced)]
         if not hits:
             outcomes.append(
-                FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False, after_change=f.fault_id in change_caused)
+                FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False, after_change=f.fault_id in change_caused,
+                             root_silent=f.fault_id in silenced)
             )
             continue
         # Time to the first page consistent with this fault: an alert in its blast radius that is active in
@@ -217,6 +225,7 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
                 incident_id=main.incident_id,
                 rank=rank,
                 after_change=f.fault_id in change_caused,
+                root_silent=f.fault_id in silenced,
             )
         )
 
@@ -408,6 +417,10 @@ def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = Non
                 "after a change": fault_slice(days, lambda f: f.after_change),
                 "no change": fault_slice(days, lambda f: not f.after_change),
             },
+            "by_root_state": {
+                "root went silent": fault_slice(days, lambda f: f.root_silent),
+                "root reporting": fault_slice(days, lambda f: not f.root_silent),
+            },
         }
     return {
         "split": split,
@@ -492,6 +505,8 @@ def _config_sections(configs: dict, level: str) -> list[str]:
         lines += _table(cfg["by_intensity"], FAULT_METRICS, "intensity", with_n=True)
         if cfg["by_cause"]["after a change"]["n_faults"]:
             lines += ["", f"{level} {name}: by cause", "", *_table(cfg["by_cause"], FAULT_METRICS, "cause", with_n=True)]
+        if cfg["by_root_state"]["root went silent"]["n_faults"]:
+            lines += ["", f"{level} {name}: by root state", "", *_table(cfg["by_root_state"], FAULT_METRICS, "root", with_n=True)]
     return lines
 
 

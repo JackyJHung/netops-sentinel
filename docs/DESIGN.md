@@ -260,6 +260,14 @@ All choices in this milestone were made on the tuning split. The test split was 
 - **Test, hard:** 7 more extra roots declared (48 to 55), all 7 correct (extra-root precision 0.938 to 0.945); RCA top-1 0.978 to 0.985; runbook match 0.835 to 0.852; MTTD 4.21 to 4.18 (a newly declared root can page on its own under the per-root hold). Precision and recall unchanged.
 - The effect is bigger on test than tune because tune has few such cases (one); the direction matches and extra-root precision did not drop, which was the guard.
 
+### D30. Infer a silent root's runbook from its dependents' symptoms
+
+- **Problem.** A root that went silent has no alerts, so runbook matching on its own evidence always returned `RB-GENERIC`. Tune, hard: runbook match 0.29 for the 17 faults whose root went silent, vs 0.94 for the rest.
+- **Change.** `runbooks.yaml` now says which device types each runbook applies to (`applies_to`) and what its fault looks like on the dependents (`dependents`: weighted signals and log keywords). If the root has no evidence of its own, the runbooks for its device type are matched on the alerts of the incident nodes downstream of it. Weights encode specificity: latency follows almost any fault (weight 1), packet loss and connection errors point at the link (weight 2). The weights were written down from that reasoning before running anything, not fitted; the result is reported as `matched_on: dependents` so an operator can see it was inferred.
+- **The device-type filter alone changed nothing** on either split (faults whose root kept reporting: 0.941 tune, 0.937 test, before and after), but it stops a switch from ever getting the slow-database-query runbook.
+- **Numbers.** Tune, hard: silent-root faults 0.29 to 0.88, overall runbook 0.86 to 0.93. Test, hard: silent-root faults (48) 0.21 to 0.92, overall 0.85 [0.81, 0.89] to 0.93 [0.91, 0.95]. RCA, precision, recall, MTTD unchanged; clean unchanged.
+- **Caveat.** The signatures describe the simulator's cascades, which were written from the same intuitions. On real networks a CPU-bound router can also drop packets (control-plane policing), so the signatures are a starting point to validate against real incident history, not a result.
+
 ## Where things stand (test split, full pipeline)
 
 | | Start of session (seeds 0-9, what the README claimed) | Clean scenario now | Hard scenario now |
@@ -268,7 +276,7 @@ All choices in this milestone were made on the tuning split. The test split was 
 | Recall | 1.00 | 1.00 | 0.99 [0.99, 1.00] |
 | MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.2 [3.8, 4.5] (1.8 without change-aware paging) |
 | RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.97, 0.99] |
-| Runbook match | 0.99 | 1.00 | 0.85 [0.81, 0.89] |
+| Runbook match | 0.99 | 1.00 | 0.93 [0.91, 0.95] |
 | Wrong merges / benign paged | not measured | n/a | 0.06 / 0.14 |
 
 The milestone 2 baseline on the same hard days was precision 0.72, RCA top-1 0.62 under the old metric (0.84 per-fault), runbook 0.70, wrong merges 0.92.

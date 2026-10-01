@@ -17,6 +17,7 @@ from .topology import Topology
 # Milestone 2 correlation and RCA: one group per connected component, alerting nodes only, one root.
 SINGLE_ROOT_CORRELATION = {
     "split_incidents": False, "silence_evidence": False, "multi_root": False, "change_evidence": False, "change_hold": 0,
+    "runbook_signatures": False,
 }
 
 
@@ -33,6 +34,7 @@ class PipelineConfig:
     silence_evidence: bool = True  # nodes that stop reporting become RCA candidates and splitting origins
     silence_min: int = 5  # minutes of every metric missing before a node counts as silent
     multi_root: bool = True  # declare more than one root per incident when the evidence says so
+    runbook_signatures: bool = True  # device-type filter + match a silent root's runbook on its dependents
     local_root_floor: float = 0.1  # score floor (x top) for declaring a root that has local evidence; 0.4 = milestone 3
     change_evidence: bool = True  # a deploy/config push on a node shortly before it alerts is an RCA signal
     change_lookback: int = 15  # minutes before a node's first alert that a change still counts
@@ -100,8 +102,9 @@ def run_pipeline(
         inc.root_causes = rank_root_causes(
             inc, topo, weights={"change": config.change_weight}, multi_root=config.multi_root, local_root_floor=config.local_root_floor
         )
-        inc.runbooks = {node: match_runbook(inc, runbooks, miner, node) for node in inc.roots}
-        inc.runbook = inc.runbooks.get(inc.root_cause) or match_runbook(inc, runbooks, miner)
+        sig = config.runbook_signatures
+        inc.runbooks = {node: match_runbook(inc, runbooks, miner, node, topo, sig) for node in inc.roots}
+        inc.runbook = inc.runbooks.get(inc.root_cause) or match_runbook(inc, runbooks, miner, topo=topo, signatures=sig)
     apply_change_hold(incidents, sim.changes, config.change_lookback, config.change_hold, config.hold_per_root, topo)
     for inc in incidents:
         inc.summary = summarize(inc, fmt)
