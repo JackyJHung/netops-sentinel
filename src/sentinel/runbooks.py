@@ -71,6 +71,13 @@ def summarize(incident: Incident, fmt_time=lambda t: f"t+{t}m") -> str:
     for c in incident.changes:
         what, when = describe_change(c, onset[c.node])
         parts.append(f"Recent change: {what} at {fmt_time(c.t)}, {when}.")
+    if incident.held and incident.hold_change is not None:
+        c = incident.hold_change
+        kind = c.kind.replace("_", " ")
+        if incident.suppressed:
+            parts.append(f"Not paged: started right after a {kind} to {c.node} at {fmt_time(c.t)} and cleared during the hold.")
+        else:
+            parts.append(f"Paged at {fmt_time(incident.paged_at)} after a hold: started right after a {kind} to {c.node} and did not clear.")
     roots = set(incident.roots)
     impacted = [n for n in incident.nodes if n not in roots]
     if impacted:

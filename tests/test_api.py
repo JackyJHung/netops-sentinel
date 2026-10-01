@@ -72,3 +72,12 @@ def test_changes_in_incidents_and_ground_truth():
     change = with_change[0]["changes"][0]
     assert "caused" not in change  # the pipeline's view has no ground truth
     assert "Recent change:" in with_change[0]["summary"]
+
+
+def test_suppressed_incidents_are_listed_but_not_counted():
+    client.post("/simulate", json={"seed": 1, "minutes": 1440, "scenario": "hard"})
+    incs = client.get("/incidents").json()
+    suppressed = [i for i in incs if i["suppressed"]]
+    assert suppressed and all(i["held"] and i["paged_at"] is None for i in suppressed)
+    assert "Not paged" in suppressed[0]["summary"]
+    assert client.get("/evaluation").json()["n_incidents"] == len(incs) - len(suppressed)

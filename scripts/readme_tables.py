@@ -20,7 +20,8 @@ LABELS = {
     "+silent nodes": "+ Silent-node evidence",
     "+multi-root RCA": "+ Multi-root RCA",
     "+calibrated log bursts": "+ Calibrated log bursts",
-    "sentinel": "+ Change events (full)",
+    "+change events": "+ Change events (RCA signal)",
+    "sentinel": "+ Change-aware paging (full)",
 }
 HEADERS = {
     "precision": "Precision", "recall": "Recall", "f1": "F1", "mttd_min": "MTTD (min)", "rca_top1": "RCA top-1",

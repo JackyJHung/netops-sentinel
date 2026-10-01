@@ -69,6 +69,11 @@ class Incident:
     summary: str = ""
     silences: list[Silence] = field(default_factory=list)
     changes: list = field(default_factory=list)  # ChangeEvents on incident nodes shortly before they alerted
+    # paging decision (see paging.py); by default an incident pages as soon as it opens
+    held: bool = False
+    suppressed: bool = False
+    paged_at: int | None = None
+    hold_change: object | None = None  # the change that triggered the hold
 
     @property
     def start(self) -> int:
@@ -110,6 +115,9 @@ class Incident:
             "runbooks": self.runbooks,
             "silences": [s.to_dict() for s in self.silences],
             "changes": [c.to_dict(truth=False) for c in self.changes],
+            "held": self.held,
+            "suppressed": self.suppressed,
+            "paged_at": self.paged_at if self.paged_at is not None or self.suppressed else self.start,
             "summary": self.summary,
         }
         if include_alerts:

@@ -221,15 +221,38 @@ All choices in this milestone were made on the tuning split. The test split was 
 - Benign events are the only false positives left (83 of 83 on test), and 80% of them are in the change log. The tempting rule, "suppress alerts right after a recorded change", is wrong: 40% of faults are also right after a change, and suppressing them is the worst possible outcome. The batch evaluation also knows how long each anomaly lasted, which a live pager does not.
 - A defensible version: when a node alerts within a few minutes after a recorded change, hold the page for a short grace period and drop it if the anomaly clears (a rolling restart recovers in minutes, a bad deploy does not), paging with the change cited if it persists. The cost is MTTD on change-caused faults (plus the grace period), so it needs its own MTTD-vs-precision curve and a streaming evaluation to be measured honestly. Left as the first roadmap item.
 
+## Follow-up: change-aware paging
+
+### D27. Hold a page after a recorded change; drop it if it clears
+
+- **Rule** (`paging.py`). If a recorded change hit any of an incident's nodes (alerting or silent) in the 15 min before the incident started (the RCA change window, plus 2 min of clock slack), hold the page for `change_hold` minutes. If every alert has ended by then, suppress the incident (listed, not paged); otherwise page when the hold expires and say which change it followed. It only uses what is known when the hold expires, so a live pager could do the same. Evaluation counts only paged incidents, and MTTD for a held incident is measured to the page.
+- **Why not "suppress after changes".** 40% of faults follow a change; blanket suppression would hide exactly the outages that changes cause. Duration is the difference: a rolling restart recovers in minutes, a bad deploy does not.
+- **Criterion set before the sweep:** the smallest hold that captures most of the precision gain with no recall loss. **Sweep (tune, hard):**
+
+| hold (min) | precision | recall | benign paged | MTTD, change-caused | MTTD, other | real faults suppressed |
+|---|---|---|---|---|---|---|
+| 0 | 0.765 | 0.993 | 1.00 | 2.2 | 1.8 | 0 |
+| 5 | 0.840 | 0.986 | 0.61 | 5.9 | 2.1 | 1 |
+| 8 | 0.926 | 0.986 | 0.26 | 8.2 | 2.4 | 1 |
+| 10 | 0.925 | 0.978 | 0.26 | 9.7 | 2.7 | 2 |
+| 15 | 0.925 | 0.978 | 0.26 | 13.9 | 3.3 | 2 |
+| 20 | 0.923 | 0.949 | 0.26 | 18.0 | 3.8 | 5 |
+
+  No hold meets "no recall loss" strictly: even 5 min suppresses one real fault. 5 and 8 lose the same fault, and 8 gets nearly all the precision, so 8 was kept; longer holds only add delay and lose faults. Clean scenario: identical at every setting (no changes there).
+- **The suppressed real fault (tune).** A subtle (intensity 0.33) link flap on `core-rtr-1` caused by a config push, whose alerts lasted 5 min. To a duration rule it is indistinguishable from a benign blip; that is the inherent risk, and the reason the hold should stay short.
+- **Why faults that were not caused by a change also slow down (tune).** 10 of 11 such delays come from sharing an incident with a concurrent partner fault that was change-caused, so the merged incident is held as a whole. Holding per root cause instead of per incident would fix that.
+- **Results (test, hard).** Precision 0.80 [0.76, 0.84] to 0.96 [0.95, 0.98]; benign events paged 1.00 to 0.14 (mostly the ~20% of benign events never logged as changes); recall 0.99 unchanged, 0 of 71 suppressed incidents was a real fault. MTTD 1.8 to 4.7 min overall: 1.7 to 8.1 for change-caused faults, 1.8 to 2.6 for the rest. Clean scenario unchanged.
+- **Is it worth it?** A policy call, not a measurement: 16 points of precision (71 fewer false pages over 30 simulated days, about 2.4 a day) against about 6 extra minutes before a change-caused outage pages. Kept on by default as the last ablation row so both numbers are visible; `PipelineConfig(change_hold=0)` turns it off.
+
 ## Where things stand (test split, full pipeline)
 
 | | Start of session (seeds 0-9, what the README claimed) | Clean scenario now | Hard scenario now |
 |---|---|---|---|
-| Precision | 0.94 | 1.00 [1.00, 1.00] | 0.80 [0.76, 0.84] |
+| Precision | 0.94 | 1.00 [1.00, 1.00] | 0.96 [0.95, 0.98] |
 | Recall | 1.00 | 1.00 | 0.99 [0.99, 1.00] |
-| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 1.8 [1.5, 2.0] |
+| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 4.7 [4.3, 5.1] (1.8 without change-aware paging) |
 | RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.96, 0.99] |
 | Runbook match | 0.99 | 1.00 | 0.83 [0.79, 0.88] |
-| Wrong merges / benign paged | not measured | n/a | 0.06 / 1.00 |
+| Wrong merges / benign paged | not measured | n/a | 0.06 / 0.14 |
 
 The milestone 2 baseline on the same hard days was precision 0.72, RCA top-1 0.62 under the old metric (0.84 per-fault), runbook 0.70, wrong merges 0.92.

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from .correlation import Incident, Silence, correlate, detect_silences
 from .detection import Alert, detect_metric_anomalies
 from .logs import TemplateMiner, detect_log_anomalies, parse_logs
+from .paging import apply_change_hold
 from .rca import attach_changes, rank_root_causes
 from .runbooks import load_runbooks, match_runbook, summarize
 from .simulator import SimulationResult
@@ -14,7 +15,9 @@ from .topology import Topology
 
 
 # Milestone 2 correlation and RCA: one group per connected component, alerting nodes only, one root.
-SINGLE_ROOT_CORRELATION = {"split_incidents": False, "silence_evidence": False, "multi_root": False, "change_evidence": False}
+SINGLE_ROOT_CORRELATION = {
+    "split_incidents": False, "silence_evidence": False, "multi_root": False, "change_evidence": False, "change_hold": 0,
+}
 
 
 @dataclass
@@ -33,6 +36,7 @@ class PipelineConfig:
     change_evidence: bool = True  # a deploy/config push on a node shortly before it alerts is an RCA signal
     change_lookback: int = 15  # minutes before a node's first alert that a change still counts
     change_weight: float = 0.25  # RCA score weight of "changed shortly before alerting"
+    change_hold: int = 8  # minutes to hold a page after a recorded change; drop it if it clears (0 = off; tuned on tune)
 
     @classmethod
     def baseline(cls) -> PipelineConfig:
@@ -87,6 +91,7 @@ def run_pipeline(
     )
     if config.change_evidence:
         attach_changes(incidents, sim.changes, config.change_lookback)
+    apply_change_hold(incidents, sim.changes, config.change_lookback, config.change_hold)
     runbooks = load_runbooks()
     fmt = lambda t: sim.timestamp(t).strftime("%H:%M")  # noqa: E731
     for inc in incidents:

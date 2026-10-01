@@ -59,11 +59,14 @@ ABLATION: dict[str, PipelineConfig] = {
     "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False, **_OFF),
     "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False, **_OFF),
     "+log mining": PipelineConfig(**_OFF, log_false_bursts_per_day=None),
-    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False, change_evidence=False, log_false_bursts_per_day=None),
-    "+silent nodes": PipelineConfig(multi_root=False, change_evidence=False, log_false_bursts_per_day=None),
-    "+multi-root RCA": PipelineConfig(change_evidence=False, log_false_bursts_per_day=None),
-    "+calibrated log bursts": PipelineConfig(change_evidence=False),
-    "sentinel": PipelineConfig(),  # + change-event evidence
+    "+incident splitting": PipelineConfig(
+        silence_evidence=False, multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None
+    ),
+    "+silent nodes": PipelineConfig(multi_root=False, change_evidence=False, change_hold=0, log_false_bursts_per_day=None),
+    "+multi-root RCA": PipelineConfig(change_evidence=False, change_hold=0, log_false_bursts_per_day=None),
+    "+calibrated log bursts": PipelineConfig(change_evidence=False, change_hold=0),
+    "+change events": PipelineConfig(change_hold=0),
+    "sentinel": PipelineConfig(),  # + change-aware paging
 }
 
 OVERALL_METRICS = (
@@ -117,6 +120,8 @@ class DayScore:
     merged_same: int = 0
     extra_roots: int = 0  # declared roots beyond the first, over all incidents
     extra_roots_correct: int = 0
+    n_suppressed: int = 0  # incidents held after a change and dropped because they cleared
+    n_suppressed_real: int = 0  # ... of which a real fault explains (a page that should have happened)
 
 
 @dataclass
@@ -164,7 +169,9 @@ def _hits_benign(inc: Incident, b: BenignEvent) -> bool:
 
 def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | None = None) -> DayScore:
     topo = topo or Topology.default()
-    incidents = result.incidents
+    # Only incidents that paged someone count; a suppressed incident (change hold, cleared) never reached a human.
+    suppressed = [i for i in result.incidents if getattr(i, "suppressed", False)]
+    incidents = [i for i in result.incidents if not getattr(i, "suppressed", False)]
     silenced = {b.cause for b in sim.blackouts if b.cause}
     change_caused = {c.caused for c in getattr(sim, "changes", []) if c.caused}
     matched_incidents = {i.incident_id for i in incidents if any(_matches(i, f, topo) for f in sim.faults)}
@@ -180,7 +187,11 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
         # Time to the first page consistent with this fault: an alert in its blast radius that is active in
         # its window. Not the incident start, which may belong to a concurrent fault that paged earlier.
         blast = {f.root, *topo.downstream(f.root)}
-        first = min(max(a.start, f.start) for i in hits for a in i.alerts if a.node in blast and a.end >= f.start - PRE_SLACK)
+        # A held incident only reaches a human at `paged_at`, so detection cannot be earlier than that.
+        first = min(
+            max(a.start, f.start, getattr(i, "paged_at", None) or 0)
+            for i in hits for a in i.alerts if a.node in blast and a.end >= f.start - PRE_SLACK
+        )
         ttd = float(first - f.start)
         # Judge RCA on the incident carrying the most evidence of this fault (the one on-call would work
         # for it): root evidence first, then alerts in its blast radius during its window.
@@ -230,6 +241,8 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
         pairs_unrelated=pairs["unrelated"][0], merged_unrelated=pairs["unrelated"][1],
         pairs_same=pairs["same"][0], merged_same=pairs["same"][1],
         extra_roots=extra, extra_roots_correct=correct,
+        n_suppressed=len(suppressed),
+        n_suppressed_real=sum(any(_matches(i, f, topo) for f in sim.faults) for i in suppressed),
     )
 
 
@@ -265,10 +278,15 @@ def _day_counts(day: DayScore, keep=None) -> dict[str, float]:
         "merged_same": day.merged_same,
         "extra_roots": day.extra_roots,
         "extra_roots_correct": day.extra_roots_correct,
+        "suppressed": day.n_suppressed,
+        "suppressed_real": day.n_suppressed_real,
     }
 
 
-_COUNT_KEYS = ("faults", "detected", "incidents", "matched", "alerts", "benign", "pairs_unrelated", "pairs_same", "extra_roots")
+_COUNT_KEYS = (
+    "faults", "detected", "incidents", "matched", "alerts", "benign", "pairs_unrelated", "pairs_same", "extra_roots",
+    "suppressed", "suppressed_real",
+)
 
 
 def _metrics(c: dict) -> dict:

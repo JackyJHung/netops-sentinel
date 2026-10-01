@@ -70,7 +70,7 @@ async function loadList() {
   const incs = await api("/incidents");
   $("list").innerHTML = incs.map(i => `
     <div class="inc" data-id="${i.incident_id}">
-      <div class="top"><b>${i.incident_id}</b><span class="sev ${i.severity}">${i.severity}</span></div>
+      <div class="top"><b>${i.incident_id}</b><span>${i.suppressed ? '<span class="tag">not paged</span>' : i.held ? '<span class="tag">held</span>' : ""}<span class="sev ${i.severity}">${i.severity}</span></span></div>
       <div>${i.roots.map(esc).join(" + ")} · ${esc(i.runbook?.title)}</div>
       <div class="muted">${i.start_time.slice(11,16)}–${i.end_time.slice(11,16)} · ${i.n_alerts} alerts · ${i.nodes.length} nodes</div>
     </div>`).join("") || `<p class="muted" style="padding:12px">No incidents.</p>`;
