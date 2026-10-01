@@ -87,9 +87,10 @@ async function show(id) {
     <p>${esc(i.summary)}</p>
     <h3>Root-cause candidates</h3>
     <table><tr><th>node</th><th>score</th><th>why</th></tr>
-      ${i.root_causes.map(c => `<tr><td>${esc(c.node)}${c.declared ? '<span class="tag root">root</span>' : ""}${c.silent ? '<span class="tag">silent</span>' : ""}</td><td>${c.score}</td><td>${esc(c.reason)}</td></tr>`).join("")}
+      ${i.root_causes.map(c => `<tr><td>${esc(c.node)}${c.declared ? '<span class="tag root">root</span>' : ""}${c.silent ? '<span class="tag">silent</span>' : ""}${c.change ? '<span class="tag">changed</span>' : ""}</td><td>${c.score}</td><td>${esc(c.reason)}</td></tr>`).join("")}
     </table>
     ${i.silences.length ? `<p class="muted">Telemetry lost: ${i.silences.map(s => `${esc(s.node)} for ${s.end - s.start} min`).join(", ")}</p>` : ""}
+    ${i.changes.length ? `<p class="muted">Recent changes: ${i.changes.map(c => `${esc(c.kind.replace("_", " "))} to ${esc(c.node)} at +${c.t - i.start} min`).join(", ")}</p>` : ""}
     <h3>Root node metrics: ${esc(i.root_cause)}</h3>
     <div class="chartbox"><canvas id="chart"></canvas></div>
     ${i.roots.map(n => { const r = i.runbooks[n] || rb; return `

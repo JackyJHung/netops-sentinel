@@ -8,6 +8,7 @@ import yaml
 
 from .correlation import Incident
 from .logs import TemplateMiner
+from .rca import describe_change, onsets
 
 DEFAULT_RUNBOOKS = Path(__file__).resolve().parent / "data" / "runbooks.yaml"
 
@@ -66,6 +67,10 @@ def summarize(incident: Incident, fmt_time=lambda t: f"t+{t}m") -> str:
             parts.append(f"Concurrent root cause: {c['node']} (score {c['score']}; {c['reason']}); runbook {other.get('id', 'RB-GENERIC')}.")
     for s in incident.silences:
         parts.append(f"{s.node} stopped sending telemetry at {fmt_time(s.start)} for {s.end - s.start} min.")
+    onset = onsets(incident)
+    for c in incident.changes:
+        what, when = describe_change(c, onset[c.node])
+        parts.append(f"Recent change: {what} at {fmt_time(c.t)}, {when}.")
     roots = set(incident.roots)
     impacted = [n for n in incident.nodes if n not in roots]
     if impacted:

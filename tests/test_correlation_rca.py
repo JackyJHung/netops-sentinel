@@ -127,3 +127,50 @@ def test_rca_single_root_when_everything_is_explained():
     alerts = [_a(1, "access-sw-3", 100, signal="packet_loss_pct"), _a(2, "db-1", 101), _a(3, "api-1", 102)]
     (inc,) = correlate(alerts, topo)
     assert [c["node"] for c in rank_root_causes(inc, topo) if c["declared"]] == ["access-sw-3"]
+
+
+# ---------------------------------------------------------------- milestone 5: change events
+def test_recent_change_promotes_the_changed_node():
+    from sentinel.rca import attach_changes
+    from sentinel.simulator import ChangeEvent
+
+    topo = Topology.default()
+    # access-sw-2 link fault cascades to cache-1, api-1, web-1. web-1 alerts a little later with only cascading
+    # symptoms, so it looks like part of the cascade, but web-1 was deployed 2 min before its first alert.
+    alerts = [
+        _a(1, "access-sw-2", 100, 140, signal="packet_loss_pct", sev="critical"),
+        _a(2, "cache-1", 101, 140),
+        _a(3, "api-1", 102, 140),
+        _a(4, "web-1", 105, 140),
+    ]
+    (inc,) = correlate(alerts, topo)
+    without = [c["node"] for c in rank_root_causes(inc, topo)]
+    attach_changes([inc], [ChangeEvent("C001", "deploy", "web-1", 103)], lookback=15)
+    ranked = rank_root_causes(inc, topo)
+    assert without.index("web-1") > 1
+    assert [c["node"] for c in ranked][:2] == ["access-sw-2", "web-1"]
+    assert ranked[1]["declared"] and "deploy to web-1" in ranked[1]["reason"]
+
+
+def test_changes_outside_lookback_or_on_other_nodes_are_ignored():
+    from sentinel.rca import attach_changes
+    from sentinel.simulator import ChangeEvent
+
+    topo = Topology.default()
+    (inc,) = correlate([_a(1, "access-sw-3", 100, signal="packet_loss_pct"), _a(2, "db-1", 101)], topo)
+    changes = [ChangeEvent("C001", "deploy", "db-1", 60), ChangeEvent("C002", "deploy", "web-1", 99)]
+    attach_changes([inc], changes, lookback=15)
+    assert inc.changes == []
+
+
+def test_summary_names_the_change():
+    from sentinel.rca import attach_changes
+    from sentinel.runbooks import summarize
+    from sentinel.simulator import ChangeEvent
+
+    topo = Topology.default()
+    (inc,) = correlate([_a(1, "dist-sw-2", 845, signal="cpu_pct", sev="critical"), _a(2, "access-sw-3", 846)], topo)
+    attach_changes([inc], [ChangeEvent("C001", "config_push", "dist-sw-2", 842)], lookback=15)
+    inc.root_causes = rank_root_causes(inc, topo)
+    text = summarize(inc, lambda t: f"{t // 60:02d}:{t % 60:02d}")
+    assert "config push to dist-sw-2 at 14:02, 3 min before first alert" in text

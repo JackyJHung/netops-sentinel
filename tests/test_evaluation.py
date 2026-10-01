@@ -166,3 +166,10 @@ def test_runbook_is_judged_for_the_faults_own_root():
     runbooks = {"access-sw-3": {"fault_kind": "link_flap"}, "cache-1": {"fault_kind": "memory_leak"}}
     day = _fake_day([fa, fb], [_inc("INC-1", alerts, ["access-sw-3", "cache-1"], runbooks)])
     assert [f.cls_ok for f in day.faults] == [True, True]
+
+
+def test_rca_is_broken_down_by_change_cause():
+    days = [DayScore(0, 10, 3, 3, [_fault(), FaultOutcome("F002", "link_flap", "db-1", 0.9, True, 1.0, False, True, True, after_change=True)])]
+    by_cause = summarize({"x": days})["configs"]["x"]["by_cause"]
+    assert by_cause["after a change"]["n_faults"] == 1 and by_cause["after a change"]["rca_top1"]["mean"] == 0.0
+    assert by_cause["no change"]["rca_top1"]["mean"] == 1.0

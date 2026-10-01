@@ -275,6 +275,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 0.494,
+                "lo": 0.407,
+                "hi": 0.575
+              },
+              "mttd_min": {
+                "mean": 3.091,
+                "lo": 1.209,
+                "hi": 5.737
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.932,
+                "lo": 0.868,
+                "hi": 1.0
+              }
+            }
           }
         },
         "robust_z+ewma": {
@@ -530,6 +588,64 @@
                 "mean": 0.787,
                 "lo": 0.641,
                 "hi": 0.906
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 0.933,
+                "lo": 0.86,
+                "hi": 0.989
+              },
+              "mttd_min": {
+                "mean": 3.506,
+                "lo": 1.823,
+                "hi": 5.371
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.783,
+                "lo": 0.679,
+                "hi": 0.878
               }
             }
           }
@@ -789,6 +905,64 @@
                 "hi": 0.906
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 0.978,
+                "lo": 0.942,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.943,
+                "lo": 2.452,
+                "hi": 5.687
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.747,
+                "lo": 0.635,
+                "hi": 0.841
+              }
+            }
           }
         },
         "+forecast": {
@@ -1043,6 +1217,64 @@
               "classification_acc": {
                 "mean": 1.0,
                 "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 0.989,
+                "lo": 0.965,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.841,
+                "lo": 1.315,
+                "hi": 2.495
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.966,
+                "lo": 0.915,
                 "hi": 1.0
               }
             }
@@ -1303,6 +1535,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+incident splitting": {
@@ -1557,6 +1847,64 @@
               "classification_acc": {
                 "mean": 1.0,
                 "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
                 "hi": 1.0
               }
             }
@@ -1817,6 +2165,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
+                "hi": 1.0
+              }
+            }
           }
         },
         "+multi-root RCA": {
@@ -2071,6 +2477,379 @@
               "classification_acc": {
                 "mean": 1.0,
                 "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
+                "hi": 1.0
+              }
+            }
+          }
+        },
+        "+calibrated log bursts": {
+          "counts": {
+            "faults": 89,
+            "detected": 89,
+            "incidents": 89,
+            "matched": 89,
+            "alerts": 444,
+            "benign": 0,
+            "pairs_unrelated": 0,
+            "pairs_same": 0,
+            "extra_roots": 0
+          },
+          "overall": {
+            "precision": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "recall": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "mttd_min": {
+              "mean": 1.91,
+              "lo": 1.11,
+              "hi": 3.058
+            },
+            "rca_top1": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 0.989,
+              "lo": 0.967,
+              "hi": 1.0
+            },
+            "alert_compression": {
+              "mean": 4.989,
+              "lo": 4.534,
+              "hi": 5.473
+            },
+            "n_alerts": {
+              "mean": 44.4,
+              "lo": 39.297,
+              "hi": 49.6
+            },
+            "n_incidents": {
+              "mean": 8.9,
+              "lo": 8.5,
+              "hi": 9.3
+            },
+            "benign_paged": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "wrong_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "same_branch_merge": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            },
+            "extra_root_precision": {
+              "mean": null,
+              "lo": null,
+              "hi": null
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 29,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "link_flap": {
+              "n_faults": 19,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.263,
+                "lo": 0.0,
+                "hi": 4.8
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.947,
+                "lo": 0.889,
+                "hi": 1.0
+              }
+            },
+            "memory_leak": {
+              "n_faults": 21,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 6.952,
+                "lo": 6.2,
+                "hi": 8.286
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 20,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 28,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.25,
+                "lo": 1.765,
+                "hi": 5.738
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.964,
+                "lo": 0.897,
+                "hi": 1.0
+              }
+            },
+            "hard": {
+              "n_faults": 61,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.295,
+                "lo": 0.625,
+                "hi": 2.088
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
                 "hi": 1.0
               }
             }
@@ -2331,6 +3110,64 @@
                 "hi": 1.0
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 0,
+              "recall": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "mttd_min": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top1": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "rca_top3": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              },
+              "classification_acc": {
+                "mean": null,
+                "lo": null,
+                "hi": null
+              }
+            },
+            "no change": {
+              "n_faults": 89,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.91,
+                "lo": 1.11,
+                "hi": 3.058
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.989,
+                "lo": 0.967,
+                "hi": 1.0
+              }
+            }
           }
         }
       }
@@ -2341,7 +3178,9 @@
         "gap_rate": 3.0,
         "blackout_rate": 1.0,
         "fault_silence_prob": 0.5,
-        "benign_rate": 3.0
+        "benign_rate": 3.0,
+        "change_rate": 4.0,
+        "change_fault_prob": 0.4
       },
       "faults_per_day": 13.8,
       "configs": {
@@ -2598,6 +3437,64 @@
                 "mean": 0.656,
                 "lo": 0.574,
                 "hi": 0.754
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.562,
+                "lo": 0.412,
+                "hi": 0.714
+              },
+              "mttd_min": {
+                "mean": 5.222,
+                "lo": 2.606,
+                "hi": 8.15
+              },
+              "rca_top1": {
+                "mean": 0.778,
+                "lo": 0.576,
+                "hi": 0.968
+              },
+              "rca_top3": {
+                "mean": 0.852,
+                "lo": 0.7,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.593,
+                "lo": 0.444,
+                "hi": 0.778
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 0.622,
+                "lo": 0.52,
+                "hi": 0.731
+              },
+              "mttd_min": {
+                "mean": 4.661,
+                "lo": 1.894,
+                "hi": 8.389
+              },
+              "rca_top1": {
+                "mean": 0.839,
+                "lo": 0.759,
+                "hi": 0.912
+              },
+              "rca_top3": {
+                "mean": 0.875,
+                "lo": 0.808,
+                "hi": 0.942
+              },
+              "classification_acc": {
+                "mean": 0.768,
+                "lo": 0.667,
+                "hi": 0.863
               }
             }
           }
@@ -2857,6 +3754,64 @@
                 "hi": 0.686
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.896,
+                "lo": 0.811,
+                "hi": 0.962
+              },
+              "mttd_min": {
+                "mean": 3.372,
+                "lo": 1.709,
+                "hi": 5.618
+              },
+              "rca_top1": {
+                "mean": 0.721,
+                "lo": 0.545,
+                "hi": 0.912
+              },
+              "rca_top3": {
+                "mean": 0.86,
+                "lo": 0.744,
+                "hi": 0.971
+              },
+              "classification_acc": {
+                "mean": 0.512,
+                "lo": 0.366,
+                "hi": 0.707
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 0.911,
+                "lo": 0.816,
+                "hi": 0.98
+              },
+              "mttd_min": {
+                "mean": 2.695,
+                "lo": 1.038,
+                "hi": 4.353
+              },
+              "rca_top1": {
+                "mean": 0.866,
+                "lo": 0.8,
+                "hi": 0.925
+              },
+              "rca_top3": {
+                "mean": 0.915,
+                "lo": 0.873,
+                "hi": 0.953
+              },
+              "classification_acc": {
+                "mean": 0.634,
+                "lo": 0.548,
+                "hi": 0.712
+              }
+            }
           }
         },
         "+iforest": {
@@ -3112,6 +4067,64 @@
                 "mean": 0.568,
                 "lo": 0.465,
                 "hi": 0.679
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.958,
+                "lo": 0.891,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 4.739,
+                "lo": 2.307,
+                "hi": 8.043
+              },
+              "rca_top1": {
+                "mean": 0.739,
+                "lo": 0.571,
+                "hi": 0.917
+              },
+              "rca_top3": {
+                "mean": 0.87,
+                "lo": 0.76,
+                "hi": 0.972
+              },
+              "classification_acc": {
+                "mean": 0.478,
+                "lo": 0.333,
+                "hi": 0.667
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 0.967,
+                "lo": 0.918,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.805,
+                "lo": 1.313,
+                "hi": 4.188
+              },
+              "rca_top1": {
+                "mean": 0.851,
+                "lo": 0.787,
+                "hi": 0.917
+              },
+              "rca_top3": {
+                "mean": 0.92,
+                "lo": 0.871,
+                "hi": 0.964
+              },
+              "classification_acc": {
+                "mean": 0.598,
+                "lo": 0.477,
+                "hi": 0.7
               }
             }
           }
@@ -3371,6 +4384,64 @@
                 "hi": 0.759
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.426,
+                "lo": 1.333,
+                "hi": 3.898
+              },
+              "rca_top1": {
+                "mean": 0.745,
+                "lo": 0.561,
+                "hi": 0.933
+              },
+              "rca_top3": {
+                "mean": 0.872,
+                "lo": 0.774,
+                "hi": 0.972
+              },
+              "classification_acc": {
+                "mean": 0.596,
+                "lo": 0.44,
+                "hi": 0.783
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 0.989,
+                "lo": 0.966,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.685,
+                "lo": 1.049,
+                "hi": 2.247
+              },
+              "rca_top1": {
+                "mean": 0.843,
+                "lo": 0.779,
+                "hi": 0.91
+              },
+              "rca_top3": {
+                "mean": 0.921,
+                "lo": 0.874,
+                "hi": 0.966
+              },
+              "classification_acc": {
+                "mean": 0.685,
+                "lo": 0.568,
+                "hi": 0.781
+              }
+            }
           }
         },
         "+log mining": {
@@ -3626,6 +4697,64 @@
                 "mean": 0.656,
                 "lo": 0.552,
                 "hi": 0.759
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 0.766,
+                "lo": 0.574,
+                "hi": 0.936
+              },
+              "rca_top3": {
+                "mean": 0.872,
+                "lo": 0.774,
+                "hi": 0.972
+              },
+              "classification_acc": {
+                "mean": 0.617,
+                "lo": 0.457,
+                "hi": 0.793
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.878,
+                "lo": 0.806,
+                "hi": 0.943
+              },
+              "rca_top3": {
+                "mean": 0.933,
+                "lo": 0.884,
+                "hi": 0.978
+              },
+              "classification_acc": {
+                "mean": 0.711,
+                "lo": 0.6,
+                "hi": 0.798
               }
             }
           }
@@ -3885,6 +5014,64 @@
                 "hi": 0.766
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 0.766,
+                "lo": 0.574,
+                "hi": 0.936
+              },
+              "rca_top3": {
+                "mean": 0.872,
+                "lo": 0.774,
+                "hi": 0.972
+              },
+              "classification_acc": {
+                "mean": 0.638,
+                "lo": 0.466,
+                "hi": 0.833
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.878,
+                "lo": 0.806,
+                "hi": 0.943
+              },
+              "rca_top3": {
+                "mean": 0.933,
+                "lo": 0.884,
+                "hi": 0.978
+              },
+              "classification_acc": {
+                "mean": 0.756,
+                "lo": 0.691,
+                "hi": 0.813
+              }
+            }
           }
         },
         "+silent nodes": {
@@ -4140,6 +5327,64 @@
                 "mean": 0.656,
                 "lo": 0.562,
                 "hi": 0.753
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 0.915,
+                "lo": 0.846,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.617,
+                "lo": 0.449,
+                "hi": 0.821
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.956,
+                "lo": 0.901,
+                "hi": 0.99
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.733,
+                "lo": 0.653,
+                "hi": 0.804
               }
             }
           }
@@ -4399,9 +5644,67 @@
                 "hi": 0.857
               }
             }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 0.957,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.745,
+                "lo": 0.586,
+                "hi": 0.917
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.989,
+                "lo": 0.965,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.856,
+                "lo": 0.8,
+                "hi": 0.906
+              }
+            }
           }
         },
-        "sentinel": {
+        "+calibrated log bursts": {
           "counts": {
             "faults": 138,
             "detected": 137,
@@ -4654,6 +5957,379 @@
                 "mean": 0.781,
                 "lo": 0.714,
                 "hi": 0.842
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 0.936,
+                "lo": 0.891,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.723,
+                "lo": 0.577,
+                "hi": 0.884
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.989,
+                "lo": 0.965,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.856,
+                "lo": 0.8,
+                "hi": 0.906
+              }
+            }
+          }
+        },
+        "sentinel": {
+          "counts": {
+            "faults": 138,
+            "detected": 137,
+            "incidents": 132,
+            "matched": 101,
+            "alerts": 712,
+            "benign": 31,
+            "pairs_unrelated": 13,
+            "pairs_same": 36,
+            "extra_roots": 26
+          },
+          "overall": {
+            "precision": {
+              "mean": 0.765,
+              "lo": 0.697,
+              "hi": 0.836
+            },
+            "recall": {
+              "mean": 0.993,
+              "lo": 0.977,
+              "hi": 1.0
+            },
+            "f1": {
+              "mean": 0.864,
+              "lo": 0.816,
+              "hi": 0.909
+            },
+            "mttd_min": {
+              "mean": 1.912,
+              "lo": 1.374,
+              "hi": 2.504
+            },
+            "rca_top1": {
+              "mean": 0.993,
+              "lo": 0.978,
+              "hi": 1.0
+            },
+            "rca_top3": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "classification_acc": {
+              "mean": 0.847,
+              "lo": 0.803,
+              "hi": 0.889
+            },
+            "alert_compression": {
+              "mean": 5.394,
+              "lo": 4.899,
+              "hi": 5.823
+            },
+            "n_alerts": {
+              "mean": 71.2,
+              "lo": 67.0,
+              "hi": 75.202
+            },
+            "n_incidents": {
+              "mean": 13.2,
+              "lo": 12.5,
+              "hi": 14.1
+            },
+            "benign_paged": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "wrong_merge": {
+              "mean": 0.0,
+              "lo": 0.0,
+              "hi": 0.0
+            },
+            "same_branch_merge": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            },
+            "extra_root_precision": {
+              "mean": 1.0,
+              "lo": 1.0,
+              "hi": 1.0
+            }
+          },
+          "by_kind": {
+            "cpu_saturation": {
+              "n_faults": 40,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.175,
+                "lo": 0.069,
+                "hi": 0.278
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.775,
+                "lo": 0.644,
+                "hi": 0.921
+              }
+            },
+            "link_flap": {
+              "n_faults": 30,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.033,
+                "lo": 0.0,
+                "hi": 2.379
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.833,
+                "lo": 0.724,
+                "hi": 0.955
+              }
+            },
+            "memory_leak": {
+              "n_faults": 33,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 6.788,
+                "lo": 5.903,
+                "hi": 7.63
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.939,
+                "lo": 0.778,
+                "hi": 1.0
+              }
+            },
+            "latency_degradation": {
+              "n_faults": 35,
+              "recall": {
+                "mean": 0.971,
+                "lo": 0.903,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 0.0,
+                "lo": 0.0,
+                "hi": 0.0
+              },
+              "rca_top1": {
+                "mean": 0.971,
+                "lo": 0.914,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.853,
+                "lo": 0.733,
+                "hi": 0.946
+              }
+            }
+          },
+          "by_intensity": {
+            "subtle": {
+              "n_faults": 41,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 3.0,
+                "lo": 1.636,
+                "hi": 4.958
+              },
+              "rca_top1": {
+                "mean": 0.976,
+                "lo": 0.932,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.927,
+                "lo": 0.846,
+                "hi": 1.0
+              }
+            },
+            "hard": {
+              "n_faults": 97,
+              "recall": {
+                "mean": 0.99,
+                "lo": 0.968,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.448,
+                "lo": 1.01,
+                "hi": 1.929
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.812,
+                "lo": 0.753,
+                "hi": 0.866
+              }
+            }
+          },
+          "by_cause": {
+            "after a change": {
+              "n_faults": 48,
+              "recall": {
+                "mean": 0.979,
+                "lo": 0.917,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 2.213,
+                "lo": 1.3,
+                "hi": 3.384
+              },
+              "rca_top1": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.851,
+                "lo": 0.736,
+                "hi": 0.959
+              }
+            },
+            "no change": {
+              "n_faults": 90,
+              "recall": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "mttd_min": {
+                "mean": 1.756,
+                "lo": 0.963,
+                "hi": 2.641
+              },
+              "rca_top1": {
+                "mean": 0.989,
+                "lo": 0.965,
+                "hi": 1.0
+              },
+              "rca_top3": {
+                "mean": 1.0,
+                "lo": 1.0,
+                "hi": 1.0
+              },
+              "classification_acc": {
+                "mean": 0.844,
+                "lo": 0.796,
+                "hi": 0.884
               }
             }
           }

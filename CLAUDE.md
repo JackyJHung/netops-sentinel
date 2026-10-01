@@ -16,11 +16,11 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 
 ## Layout
 
-- `src/sentinel/simulator.py`: telemetry, syslog, fault injection (`Fault` has kind, root, start, duration, intensity); `SCENARIOS` (clean, hard): concurrent faults, NaN gaps/blackouts, benign events, each on its own RNG stream
+- `src/sentinel/simulator.py`: telemetry, syslog, fault injection (`Fault` has kind, root, start, duration, intensity); `SCENARIOS` (clean, hard): concurrent faults, NaN gaps/blackouts, benign events, change log (`ChangeEvent.caused` is ground truth the pipeline must never read), each on its own RNG stream
 - `src/sentinel/detection.py`: static, robust z + EWMA (must agree), Isolation Forest on residuals, saturation forecast -> `Alert`
 - `src/sentinel/logs.py`: Drain-style template miner, new-event-type and burst alerts; bursts must pass a Poisson tail test at a daily false-alarm budget
 - `src/sentinel/correlation.py`: union-find grouping by time window + topology, then split at origins (unrelated branches, separate onsets); `detect_silences` for nodes that went dark -> `Incident`
-- `src/sentinel/rca.py`: explain / earliness / intensity scoring over alerting and silent nodes; declares multiple roots (unrelated branch, or local CPU/memory symptoms)
+- `src/sentinel/rca.py`: explain / earliness / intensity / recent-change scoring over alerting and silent nodes; `attach_changes`; declares multiple roots (unrelated branch, or local evidence: CPU/memory symptoms or a recent change)
 - `src/sentinel/runbooks.py` + `data/runbooks.yaml`: runbook matching and summaries
 - `src/sentinel/evaluation.py`: seed splits, per-day scoring, pooled metrics, day-level bootstrap CIs, per-kind/intensity breakdowns, ablation ladder, parallel runner
 - `src/sentinel/api.py`, `static/index.html`: API and dashboard
@@ -39,17 +39,18 @@ sentinel serve               # FastAPI + dashboard on :8000 (/docs for OpenAPI)
 - Missing telemetry is NaN; detectors treat it as no evidence (never anomalous, never learned).
 - README prose: no em dashes.
 
-## Current state (Sep 30, 2026)
+## Current state (Oct 1, 2026)
 
-- Milestones 1-4 done: honest evaluation, hard scenario, correlation/RCA for concurrent faults and silent nodes, calibrated log bursts.
-- Test split, full pipeline. Clean: P 1.00 / R 1.00 / MTTD 2.0 / RCA top-1 1.00 / runbook 1.00. Hard: P 0.80 / R 0.99 / MTTD 1.8 / RCA top-1 0.97 / top-3 1.00 / runbook 0.83 / wrong merges 0.06 / benign paged 1.00.
-- RCA is scored per fault with a filtered rank (DESIGN D14).
-- Every remaining false positive (hard) is a benign event: 83 of 83 on test.
-- Known weaknesses: benign changes always page; multi-root declaration needs downstream alerts to clear its score floor even with local CPU/memory symptoms (DESIGN D21); same-branch concurrent faults with only cascading symptoms rank 2nd-3rd; silent roots get a generic runbook; EWMA absorbs slow ramps (D5); Poisson assumption for log rates; small sample of unrelated concurrent pairs (13 tune, 64 test).
+- Milestones 1-5 done: honest evaluation, hard scenario, correlation/RCA for concurrent faults and silent nodes, calibrated log bursts, change-event correlation.
+- Test split, full pipeline. Clean: P 1.00 / R 1.00 / MTTD 2.0 / RCA top-1 1.00 / runbook 1.00. Hard: P 0.80 / R 0.99 / MTTD 1.8 / RCA top-1 0.98 / top-3 1.00 / runbook 0.83 / wrong merges 0.06 / benign paged 1.00.
+- RCA is scored per fault with a filtered rank (DESIGN D14). Every remaining false positive (hard) is a benign event: 83 of 83 on test.
+- Known weaknesses: benign changes always page; harmless changes near incidents cost some extra-root precision and runbook match on non-change faults (D25, seen on test, not tune); multi-root declaration needs downstream alerts to clear its score floor even with local evidence (D21); silent roots get a generic runbook; EWMA absorbs slow ramps (D5); Poisson assumption for log rates; change lookback fitted to the simulator's own delay; small sample of unrelated concurrent pairs (13 tune, 64 test).
 
 ## Next steps (roadmap order)
 
-1. Change-event (deploy/config push) correlation as an RCA signal (milestone 5)
-2. Streaming mode (Kafka or Redis Streams) with online detectors
-3. Prometheus / OpenTelemetry ingestion
-4. LLM-drafted incident summaries grounded in the alert timeline
+1. Change-aware paging: hold-and-release after recorded changes, measured as an MTTD vs precision curve (DESIGN D26)
+2. Let local evidence (CPU/memory, a recent change) declare a root without the score floor (D21), guarded by extra-root precision
+3. Infer a silent network device's runbook from its children's symptoms
+4. Streaming mode (Kafka or Redis Streams) with online detectors
+5. Prometheus / OpenTelemetry ingestion and a real change feed
+6. LLM-drafted incident summaries grounded in the alert timeline

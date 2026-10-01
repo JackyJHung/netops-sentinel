@@ -35,6 +35,9 @@ def cmd_run(args) -> None:
     for b in sim.blackouts:
         cause = f"caused by {b.cause}" if b.cause else "random"
         print(f"  blackout {b.node:<12} {sim.timestamp(b.start):%H:%M}-{sim.timestamp(b.end):%H:%M} ({cause})")
+    for c in sim.changes:
+        effect = f"caused {c.caused}" if c.caused else "harmless"
+        print(f"  {c.change_id:<5} change {c.kind:<13} node={c.node:<12} {sim.timestamp(c.t):%H:%M} ({effect})")
     print("\nScore:", json.dumps(evaluate(sim, result, topo).to_dict(), indent=2))
 
 
@@ -66,7 +69,8 @@ def cmd_export(args) -> None:
     (out / "faults.json").write_text(json.dumps([f.to_dict() for f in sim.faults], indent=2))
     truth = {"benign": [b.to_dict() for b in sim.benign], "blackouts": [b.to_dict() for b in sim.blackouts]}
     (out / "benign_and_blackouts.json").write_text(json.dumps(truth, indent=2))
-    print(f"Wrote metrics.csv, syslog.log, faults.json, benign_and_blackouts.json to {out}")
+    (out / "changes.json").write_text(json.dumps([c.to_dict() for c in sim.changes], indent=2))
+    print(f"Wrote metrics.csv, syslog.log, faults.json, benign_and_blackouts.json, changes.json to {out}")
 
 
 def cmd_serve(args) -> None:

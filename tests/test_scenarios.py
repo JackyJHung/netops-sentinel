@@ -111,3 +111,36 @@ def test_hard_scenario_runs_end_to_end(seed):
     day = score_day(sim, res)
     assert len(day.faults) == len(sim.faults)
     assert res.incidents
+
+
+# ---------------------------------------------------------------- milestone 5: change events
+def test_changes_cause_some_faults_and_some_are_harmless():
+    sim = simulate(seed=4, **SCENARIOS["hard"])
+    assert sim.changes
+    faults = {f.fault_id: f for f in sim.faults}
+    causal = [c for c in sim.changes if c.caused in faults]
+    harmless = [c for c in sim.changes if c.caused is None]
+    assert causal and harmless
+    for c in causal:
+        f = faults[c.caused]
+        assert c.node == f.root and 1 <= f.start - c.t <= 10
+        assert c.kind == ("config_push" if TOPO.nodes[c.node].is_network else "deploy")
+    assert [c.t for c in sim.changes] == sorted(c.t for c in sim.changes)
+
+
+def test_most_benign_events_have_a_change_record():
+    recorded = total = 0
+    for seed in range(6):
+        sim = simulate(seed=seed, **SCENARIOS["hard"])
+        for b in sim.benign:
+            total += 1
+            recorded += any(c.caused == b.event_id and c.node == b.node and abs(c.t - b.start) <= 2 for c in sim.changes)
+    assert total and 0.6 <= recorded / total < 1.0  # recorded most of the time, not always
+
+
+def test_changes_do_not_perturb_faults_or_clean_scenario():
+    assert simulate(seed=5).changes == []
+    no_changes = {k: v for k, v in SCENARIOS["hard"].items() if not k.startswith("change")}
+    a, b = simulate(seed=5, **SCENARIOS["hard"]), simulate(seed=5, **no_changes)
+    assert [f.to_dict() for f in a.faults] == [f.to_dict() for f in b.faults]
+    assert np.allclose(a.metrics.to_numpy(), b.metrics.to_numpy(), equal_nan=True)

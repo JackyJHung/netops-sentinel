@@ -60,3 +60,15 @@ def test_incidents_expose_multiple_roots_and_silences():
     detail = client.get(f"/incidents/{silent[0]['incident_id']}").json()
     assert {"node", "start", "end"} <= set(detail["silences"][0])
     assert any(c["silent"] for c in detail["root_causes"])
+
+
+def test_changes_in_incidents_and_ground_truth():
+    client.post("/simulate", json={"seed": 4, "minutes": 1440, "scenario": "hard"})
+    truth = client.get("/ground-truth").json()
+    assert truth["changes"] and "caused" in truth["changes"][0]
+    incs = [client.get(f"/incidents/{i['incident_id']}").json() for i in client.get("/incidents").json()]
+    with_change = [i for i in incs if i["changes"]]
+    assert with_change, "some incident should follow a recorded change"
+    change = with_change[0]["changes"][0]
+    assert "caused" not in change  # the pipeline's view has no ground truth
+    assert "Recent change:" in with_change[0]["summary"]

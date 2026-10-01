@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 from .correlation import Incident, Silence, correlate, detect_silences
 from .detection import Alert, detect_metric_anomalies
 from .logs import TemplateMiner, detect_log_anomalies, parse_logs
-from .rca import rank_root_causes
+from .rca import attach_changes, rank_root_causes
 from .runbooks import load_runbooks, match_runbook, summarize
 from .simulator import SimulationResult
 from .topology import Topology
 
 
 # Milestone 2 correlation and RCA: one group per connected component, alerting nodes only, one root.
-SINGLE_ROOT_CORRELATION = {"split_incidents": False, "silence_evidence": False, "multi_root": False}
+SINGLE_ROOT_CORRELATION = {"split_incidents": False, "silence_evidence": False, "multi_root": False, "change_evidence": False}
 
 
 @dataclass
@@ -30,6 +30,9 @@ class PipelineConfig:
     silence_evidence: bool = True  # nodes that stop reporting become RCA candidates and splitting origins
     silence_min: int = 5  # minutes of every metric missing before a node counts as silent
     multi_root: bool = True  # declare more than one root per incident when the evidence says so
+    change_evidence: bool = True  # a deploy/config push on a node shortly before it alerts is an RCA signal
+    change_lookback: int = 15  # minutes before a node's first alert that a change still counts
+    change_weight: float = 0.25  # RCA score weight of "changed shortly before alerting"
 
     @classmethod
     def baseline(cls) -> PipelineConfig:
@@ -82,10 +85,12 @@ def run_pipeline(
         alerts, topo, config.correlation_window, config.max_hops,
         split=config.split_incidents, split_gap=config.split_gap, silences=silences,
     )
+    if config.change_evidence:
+        attach_changes(incidents, sim.changes, config.change_lookback)
     runbooks = load_runbooks()
     fmt = lambda t: sim.timestamp(t).strftime("%H:%M")  # noqa: E731
     for inc in incidents:
-        inc.root_causes = rank_root_causes(inc, topo, multi_root=config.multi_root)
+        inc.root_causes = rank_root_causes(inc, topo, weights={"change": config.change_weight}, multi_root=config.multi_root)
         inc.runbooks = {node: match_runbook(inc, runbooks, miner, node) for node in inc.roots}
         inc.runbook = inc.runbooks.get(inc.root_cause) or match_runbook(inc, runbooks, miner)
         inc.summary = summarize(inc, fmt)

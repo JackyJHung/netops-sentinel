@@ -13,6 +13,10 @@ Optional realism (all off by default, see SCENARIOS):
                            unreachable during a hard fault
   * benign events        - config pushes and rolling restarts that cause a
                            short, real spike but are not faults
+  * change events        - a change log (deploys, config pushes) the pipeline can
+                           read: some changes cause the fault that follows them,
+                           most benign events are recorded as changes, and the
+                           rest are harmless
 
 Each option draws from its own RNG stream derived from the seed, so turning
 one on does not reshuffle the others, and the default output is unchanged.
@@ -36,7 +40,8 @@ SILENCE_MIN_INTENSITY = 0.6  # only hard faults knock a device off the monitorin
 BENIGN_CLEARANCE = 30  # minutes between a benign event and any fault, so labels are unambiguous
 
 # Independent RNG streams for the optional scenario features.
-_STREAM_OVERLAP, _STREAM_BENIGN, _STREAM_MISSING = 1, 2, 3
+_STREAM_OVERLAP, _STREAM_BENIGN, _STREAM_MISSING, _STREAM_CHANGES = 1, 2, 3, 4
+BENIGN_RECORDED = 0.8  # share of benign events (planned changes) that make it into the change log
 
 SCENARIOS: dict[str, dict] = {
     "clean": {},
@@ -46,6 +51,8 @@ SCENARIOS: dict[str, dict] = {
         "blackout_rate": 1.0,  # random whole-node blackouts per day (not faults)
         "fault_silence_prob": 0.5,  # chance a hard network fault makes the device unreachable
         "benign_rate": 3.0,  # benign config pushes / restarts per day
+        "change_rate": 4.0,  # harmless changes per day, at random nodes and times
+        "change_fault_prob": 0.4,  # chance a fault was caused by a change on its root 1-10 min earlier
     },
 }
 
@@ -86,6 +93,23 @@ class BenignEvent:
 
 
 @dataclass
+class ChangeEvent:
+    """An entry in the change log: what the pipeline sees is kind, node, and time."""
+
+    change_id: str
+    kind: str  # deploy | config_push
+    node: str
+    t: int  # minute index
+    caused: str | None = None  # ground truth only (fault_id or benign event_id); the pipeline never reads it
+
+    def to_dict(self, truth: bool = True) -> dict:
+        d = asdict(self)
+        if not truth:
+            d.pop("caused")
+        return d
+
+
+@dataclass
 class Blackout:
     """A window where a node sent no telemetry at all (metrics NaN, no logs)."""
 
@@ -120,6 +144,7 @@ class SimulationResult:
     start_time: datetime = field(default=DEFAULT_START)
     benign: list[BenignEvent] = field(default_factory=list)
     blackouts: list[Blackout] = field(default_factory=list)
+    changes: list[ChangeEvent] = field(default_factory=list)
 
     def series(self, node: str, metric: str) -> np.ndarray:
         return self.metrics[(node, metric)].to_numpy()
@@ -367,6 +392,31 @@ def _apply_benign(rng, data: dict, logs: list[LogLine], b: BenignEvent, minutes:
         logs.append(LogLine(e - 1, b.node, "INFO rolling restart finished, all instances healthy"))
 
 
+def _change_kind(topo: Topology, node: str) -> str:
+    return "config_push" if topo.nodes[node].is_network else "deploy"
+
+
+def schedule_changes(
+    rng, topo: Topology, minutes: int, warmup: int, faults: list[Fault], benign: list[BenignEvent],
+    change_rate: float, change_fault_prob: float,
+) -> list[ChangeEvent]:
+    """Build the change log: causal changes on fault roots, recorded benign changes, and harmless noise."""
+    changes: list[ChangeEvent] = []
+    for f in faults:
+        if rng.random() < change_fault_prob:
+            changes.append(ChangeEvent("", _change_kind(topo, f.root), f.root, f.start - int(rng.integers(1, 11)), f.fault_id))
+    for b in benign:  # planned work is usually, but not always, in the change log; timestamps are approximate
+        if rng.random() < BENIGN_RECORDED:
+            changes.append(ChangeEvent("", _change_kind(topo, b.node), b.node, b.start + int(rng.integers(-2, 3)), b.event_id))
+    for _ in range(int(rng.poisson(change_rate))):
+        node = str(rng.choice(list(topo.nodes)))
+        changes.append(ChangeEvent("", _change_kind(topo, node), node, int(rng.integers(warmup, minutes))))
+    changes.sort(key=lambda c: (c.t, c.node))
+    for k, c in enumerate(changes):
+        c.change_id = f"C{k + 1:03d}"
+    return changes
+
+
 def _apply_missing(
     rng, topo: Topology, data: dict, faults: list[Fault], minutes: int, warmup: int,
     gap_rate: float, blackout_rate: float, fault_silence_prob: float,
@@ -412,6 +462,8 @@ def simulate(
     blackout_rate: float = 0.0,
     fault_silence_prob: float = 0.0,
     benign_rate: float = 0.0,
+    change_rate: float = 0.0,
+    change_fault_prob: float = 0.0,
 ) -> SimulationResult:
     """Simulate one day. The scenario options default to off; `SCENARIOS["hard"]` turns them all on."""
     topo = topo or Topology.default()
@@ -459,8 +511,13 @@ def simulate(
         blackouts = _apply_missing(mrng, topo, data, faults, minutes, warmup, gap_rate, blackout_rate, fault_silence_prob)
         logs = [ln for ln in logs if not any(b.node == ln.node and b.start <= ln.t < b.end for b in blackouts)]
 
+    changes: list[ChangeEvent] = []
+    if change_rate > 0 or change_fault_prob > 0:
+        crng = np.random.default_rng([seed, _STREAM_CHANGES])
+        changes = schedule_changes(crng, topo, minutes, warmup, faults, benign, change_rate, change_fault_prob)
+
     columns = pd.MultiIndex.from_tuples(list(data.keys()), names=["node", "metric"])
     df = pd.DataFrame(np.column_stack(list(data.values())), columns=columns)
     df.index.name = "minute"
     logs.sort(key=lambda x: (x.t, x.node))
-    return SimulationResult(df, logs, faults, minutes, warmup, seed, benign=benign, blackouts=blackouts)
+    return SimulationResult(df, logs, faults, minutes, warmup, seed, benign=benign, blackouts=blackouts, changes=changes)

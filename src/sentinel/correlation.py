@@ -68,6 +68,7 @@ class Incident:
     runbooks: dict[str, dict] = field(default_factory=dict)  # runbook per declared root
     summary: str = ""
     silences: list[Silence] = field(default_factory=list)
+    changes: list = field(default_factory=list)  # ChangeEvents on incident nodes shortly before they alerted
 
     @property
     def start(self) -> int:
@@ -108,6 +109,7 @@ class Incident:
             "runbook": self.runbook,
             "runbooks": self.runbooks,
             "silences": [s.to_dict() for s in self.silences],
+            "changes": [c.to_dict(truth=False) for c in self.changes],
             "summary": self.summary,
         }
         if include_alerts:

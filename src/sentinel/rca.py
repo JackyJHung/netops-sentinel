@@ -11,6 +11,9 @@ Candidates are the alerting nodes plus nodes that went silent (stopped
 sending telemetry) around the incident: a switch that goes dark while
 everything below it alerts is evidence, not an absence of evidence.
 
+A fourth signal, change, rewards a node that had a deploy or config push
+shortly before it started alerting (see `attach_changes`).
+
 The weighted sum gives a ranked list with a human-readable explanation. With
 concurrent faults one incident can have more than one root, so candidates are
 also *declared* as roots when the roots already declared cannot explain them
@@ -22,10 +25,36 @@ from __future__ import annotations
 from .correlation import ORIGIN_TOL, Incident
 from .topology import Topology
 
-WEIGHTS = {"explain": 0.45, "earliness": 0.35, "intensity": 0.20}
+WEIGHTS = {"explain": 0.45, "earliness": 0.35, "intensity": 0.20, "change": 0.25}
 LOCAL_SIGNALS = {"cpu_pct", "mem_pct"}  # resource saturation stays on the box; it does not cascade to dependents
 MIN_ROOT_SCORE = 0.4  # a second root must score at least this fraction of the top candidate
 MAX_ROOTS = 3
+
+
+def onsets(incident: Incident) -> dict[str, int]:
+    """First alert (or silence) per node in the incident."""
+    first: dict[str, int] = {}
+    for a in incident.alerts:
+        first[a.node] = min(first.get(a.node, a.start), a.start)
+    for s in incident.silences:
+        first[s.node] = min(first.get(s.node, s.start), s.start)
+    return first
+
+
+def attach_changes(incidents: list[Incident], changes: list, lookback: int = 15) -> None:
+    """Attach the changes made to an incident's nodes in the `lookback` minutes before each node's first
+    alert (or silence). A change logged up to ORIGIN_TOL after the onset still counts: change logs and
+    monitoring clocks are not perfectly aligned."""
+    for inc in incidents:
+        onset = onsets(inc)
+        inc.changes = [c for c in changes if c.node in onset and onset[c.node] - lookback <= c.t <= onset[c.node] + ORIGIN_TOL]
+
+
+def describe_change(c, onset: int) -> tuple[str, str]:
+    """("config push to dist-sw-2", "3 min before first alert")"""
+    gap = onset - c.t
+    when = f"{gap} min before first alert" if gap > 0 else "at the first alert" if gap == 0 else f"{-gap} min after first alert"
+    return f"{c.kind.replace('_', ' ')} to {c.node}", when
 
 
 def rank_root_causes(
@@ -35,14 +64,14 @@ def rank_root_causes(
     top_k: int = 5,
     multi_root: bool = True,
 ) -> list[dict]:
-    w = weights or WEIGHTS
-    first: dict[str, int] = {}
-    for a in incident.alerts:
-        first[a.node] = min(first.get(a.node, a.start), a.start)
+    w = {**WEIGHTS, **(weights or {})}
+    first = onsets(incident)
     went_silent: dict[str, tuple[int, int]] = {}
     for s in incident.silences:
         went_silent.setdefault(s.node, (s.start, s.end))
-        first[s.node] = min(first.get(s.node, s.start), s.start)
+    changed = {}
+    for c in sorted(incident.changes, key=lambda c: c.t):
+        changed[c.node] = c  # the most recent change wins
     nodes = sorted(first)
     start = min(first.values())
     span = max(incident.end - start, 1)
@@ -68,9 +97,13 @@ def rank_root_causes(
             explain *= 0.5
         earliness = 1.0 - (first[n] - start) / span
         intensity = raw_intensity[n] / max_int
-        score = w["explain"] * explain + w["earliness"] * earliness + w["intensity"] * intensity
+        change = 1.0 if n in changed else 0.0
+        score = w["explain"] * explain + w["earliness"] * earliness + w["intensity"] * intensity + w["change"] * change
 
         reasons = []
+        if n in changed:
+            what, when = describe_change(changed[n], first[n])
+            reasons.append(f"{what} {when}")
         if n in went_silent:
             s, e = went_silent[n]
             reasons.append(f"stopped reporting at +{s - start} min (no telemetry for {e - s} min)")
@@ -88,6 +121,7 @@ def rank_root_causes(
                 "earliness": round(earliness, 3),
                 "intensity": round(intensity, 3),
                 "silent": n in went_silent,
+                "change": changed[n].change_id if n in changed else None,
                 "declared": False,
                 "reason": "; ".join(reasons),
             }
@@ -100,14 +134,14 @@ def rank_root_causes(
 
 def _declare_roots(ranked: list[dict], incident: Incident, topo: Topology, multi_root: bool) -> None:
     """Mark the top candidate as a root, plus (if `multi_root`) any later candidate the declared roots cannot
-    explain: one on an unrelated branch, or one downstream but showing symptoms that do not propagate
-    (CPU or memory saturation), which points to a second, local fault."""
+    explain: one on an unrelated branch, or one downstream but with local evidence that does not propagate
+    (CPU or memory saturation, or a change made to it just before it alerted)."""
     if not ranked:
         return
     ranked[0]["declared"] = True
     if not multi_root:
         return
-    local = {a.node for a in incident.alerts if a.signal in LOCAL_SIGNALS}
+    local = {a.node for a in incident.alerts if a.signal in LOCAL_SIGNALS} | {c["node"] for c in ranked if c.get("change")}
     declared = [ranked[0]["node"]]
     floor = MIN_ROOT_SCORE * ranked[0]["score"]
     for c in ranked[1:]:
@@ -119,5 +153,5 @@ def _declare_roots(ranked: list[dict], incident: Incident, topo: Topology, multi
         explained = any(n in topo.downstream(d) for d in declared)
         if not explained or n in local:
             c["declared"] = True
-            c["reason"] += "; not explained by the other root cause(s)" if not explained else "; local CPU/memory symptoms do not cascade"
+            c["reason"] += "; not explained by the other root cause(s)" if not explained else "; local evidence (CPU/memory or a recent change) does not cascade"
             declared.append(n)

@@ -181,3 +181,55 @@ All choices in this milestone were made on the tuning split. The test split was 
 
 - The 9-point precision cost of log mining on clean days is fully recovered, while keeping its recall and runbook gains over the metric-only pipeline.
 - Hard scenario: all 83 remaining false-positive incidents are benign events (one per benign event). That is milestone 5's problem.
+
+## Milestone 5: change-event correlation
+
+### D23. A change log in the simulator, with ground truth the pipeline never reads
+
+- `ChangeEvent(kind, node, t)`: deploys on services, config pushes on network devices, on its own RNG stream (clean scenario unchanged, faults unchanged). Hard scenario: 40% of faults are caused by a change on their root 1-10 min before they start; 80% of benign events are in the log (timestamps +-2 min, because planned work is not always logged and clocks are not aligned); about 4 harmless changes a day land on random nodes at random times, so some sit next to unrelated incidents. `caused` holds the ground truth (fault or benign id) and is stripped from everything the pipeline and API incident views see.
+- **Caveat to say out loud.** The simulator decides the change-to-fault delay (1-10 min), and the lookback below is tuned against data from that simulator. Real delays have a long tail (a deploy that leaks memory may take hours), so the lookback would have to be re-fit on real change and incident history.
+
+### D24. "Changed shortly before it alerted" as an RCA signal
+
+- Changes on an incident's nodes in the `change_lookback` minutes before that node's first alert (or silence), plus 2 min of clock slack, are attached to the incident. In RCA they add `change_weight` to the node's score, count as local evidence for declaring a second root (like CPU or memory symptoms, a change to a node cannot come from upstream), and are named in the summary: "Recent change: config push to dist-sw-2 at 14:02, 3 min before first alert."
+- **Sweep (tune, hard; 48 of 137 detected faults followed a change).** Defaults (15 min, 0.25) were set before the sweep and sit on its plateau:
+
+| lookback / weight | top-1 overall | top-1, change-caused | top-1, other | runbook | extra-root precision |
+|---|---|---|---|---|---|
+| no change signal | 0.971 | 0.936 | 0.989 | 0.810 | 1.00 |
+| 5 / 0.25 | 0.978 | 0.957 | 0.989 | 0.825 | 1.00 |
+| 10 or 15 / 0.25 | 0.993 | 1.000 | 0.989 | 0.847 | 1.00 |
+| 15 / 0.5 | 0.985 | 1.000 | 0.978 | 0.832 | 1.00 |
+| 30 / 0.25 | 0.985 | 0.979 | 0.989 | 0.847 | 0.96 |
+
+  Too much weight lets harmless changes outrank real evidence; too long a lookback attaches unrelated changes and declares false extra roots.
+- The signal is binary (changed in the window or not). A version that decays with time since the change was not tried; with 48 change-caused faults on tune there is little room to measure the difference.
+
+### D25. Milestone 5 results (test split, hard scenario)
+
+| | RCA top-1 | top-1, 158 change-caused faults | top-1, other faults | Runbook match | Runbook, change-caused | Runbook, other | Extra-root precision |
+|---|---|---|---|---|---|---|---|
+| Before | 0.97 [0.95, 0.98] | 0.95 | 0.976 | 0.835 | 0.834 | 0.835 | 0.98 (43 of 44) |
+| After | 0.98 [0.96, 0.99] | 0.99 | 0.972 | 0.835 | 0.873 | 0.811 | 0.92 (45 of 49) |
+
+- **It helps where it should:** the faults that followed a change on their root are ranked first 99% of the time (from 95%) and get the right runbook more often.
+- **The held-out split shows costs the tuning split did not.** Harmless changes next to incidents add about 3 false extra roots and pull the top root (and its runbook) to the wrong node for a few faults that had nothing to do with a change, so net runbook match is flat. On tune, none of these costs appeared (extra-root precision 1.00, net runbook +3.7 points). Nothing was re-tuned after seeing this. Honest reading: a clear win for change-caused faults, a small and real price in confounders, overall top-1 up one point with overlapping CIs.
+- Precision and recall do not move: the signal re-ranks causes, it does not page or suppress anything.
+
+### D26. Not done: change-aware paging
+
+- Benign events are the only false positives left (83 of 83 on test), and 80% of them are in the change log. The tempting rule, "suppress alerts right after a recorded change", is wrong: 40% of faults are also right after a change, and suppressing them is the worst possible outcome. The batch evaluation also knows how long each anomaly lasted, which a live pager does not.
+- A defensible version: when a node alerts within a few minutes after a recorded change, hold the page for a short grace period and drop it if the anomaly clears (a rolling restart recovers in minutes, a bad deploy does not), paging with the change cited if it persists. The cost is MTTD on change-caused faults (plus the grace period), so it needs its own MTTD-vs-precision curve and a streaming evaluation to be measured honestly. Left as the first roadmap item.
+
+## Where things stand (test split, full pipeline)
+
+| | Start of session (seeds 0-9, what the README claimed) | Clean scenario now | Hard scenario now |
+|---|---|---|---|
+| Precision | 0.94 | 1.00 [1.00, 1.00] | 0.80 [0.76, 0.84] |
+| Recall | 1.00 | 1.00 | 0.99 [0.99, 1.00] |
+| MTTD (min) | 1.97 | 2.0 [1.6, 2.3] | 1.8 [1.5, 2.0] |
+| RCA top-1 | 1.00 (faults never overlapped) | 1.00 | 0.98 [0.96, 0.99] |
+| Runbook match | 0.99 | 1.00 | 0.83 [0.79, 0.88] |
+| Wrong merges / benign paged | not measured | n/a | 0.06 / 1.00 |
+
+The milestone 2 baseline on the same hard days was precision 0.72, RCA top-1 0.62 under the old metric (0.84 per-fault), runbook 0.70, wrong merges 0.92.

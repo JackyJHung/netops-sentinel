@@ -59,10 +59,11 @@ ABLATION: dict[str, PipelineConfig] = {
     "+iforest": PipelineConfig(detectors=("robust_z", "ewma", "iforest"), use_logs=False, **_OFF),
     "+forecast": PipelineConfig(detectors=("robust_z", "ewma", "iforest", "forecast"), use_logs=False, **_OFF),
     "+log mining": PipelineConfig(**_OFF, log_false_bursts_per_day=None),
-    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False, log_false_bursts_per_day=None),
-    "+silent nodes": PipelineConfig(multi_root=False, log_false_bursts_per_day=None),
-    "+multi-root RCA": PipelineConfig(log_false_bursts_per_day=None),
-    "sentinel": PipelineConfig(),  # + calibrated log bursts
+    "+incident splitting": PipelineConfig(silence_evidence=False, multi_root=False, change_evidence=False, log_false_bursts_per_day=None),
+    "+silent nodes": PipelineConfig(multi_root=False, change_evidence=False, log_false_bursts_per_day=None),
+    "+multi-root RCA": PipelineConfig(change_evidence=False, log_false_bursts_per_day=None),
+    "+calibrated log bursts": PipelineConfig(change_evidence=False),
+    "sentinel": PipelineConfig(),  # + change-event evidence
 }
 
 OVERALL_METRICS = (
@@ -93,6 +94,7 @@ class FaultOutcome:
     cls_ok: bool  # runbook fault_kind == true kind
     incident_id: str | None = None  # the incident this fault was judged on
     rank: int | None = None  # filtered rank of the root in that incident (1 = top)
+    after_change: bool = False  # ground truth: a change on the root caused this fault
 
     @property
     def bucket(self) -> str:
@@ -164,13 +166,16 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
     topo = topo or Topology.default()
     incidents = result.incidents
     silenced = {b.cause for b in sim.blackouts if b.cause}
+    change_caused = {c.caused for c in getattr(sim, "changes", []) if c.caused}
     matched_incidents = {i.incident_id for i in incidents if any(_matches(i, f, topo) for f in sim.faults)}
     outcomes: list[FaultOutcome] = []
     home: dict[str, str] = {}  # fault_id -> incident judged for it
     for f in sim.faults:
         hits = [i for i in incidents if _detects(i, f, topo, silenced)]
         if not hits:
-            outcomes.append(FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False))
+            outcomes.append(
+                FaultOutcome(f.fault_id, f.kind, f.root, f.intensity, False, None, False, False, False, after_change=f.fault_id in change_caused)
+            )
             continue
         # Time to the first page consistent with this fault: an alert in its blast radius that is active in
         # its window. Not the incident start, which may belong to a concurrent fault that paged earlier.
@@ -198,6 +203,7 @@ def score_day(sim: SimulationResult, result: PipelineResult, topo: Topology | No
                 cls_ok=runbook.get("fault_kind") == f.kind,
                 incident_id=main.incident_id,
                 rank=rank,
+                after_change=f.fault_id in change_caused,
             )
         )
 
@@ -378,6 +384,10 @@ def summarize(days_by_config: dict[str, list[DayScore]], split: str | None = Non
             "overall": _with_ci(days, weights, OVERALL_METRICS),
             "by_kind": {k: fault_slice(days, lambda f, k=k: f.kind == k) for k in FAULT_KINDS},
             "by_intensity": {b: fault_slice(days, lambda f, b=b: f.bucket == b) for b in INTENSITY_BUCKETS},
+            "by_cause": {
+                "after a change": fault_slice(days, lambda f: f.after_change),
+                "no change": fault_slice(days, lambda f: not f.after_change),
+            },
         }
     return {
         "split": split,
@@ -460,6 +470,8 @@ def _config_sections(configs: dict, level: str) -> list[str]:
         lines += ["", f"{level} {name}: by fault kind", "", *_table(cfg["by_kind"], FAULT_METRICS, "fault kind", with_n=True)]
         lines += ["", f"{level} {name}: by intensity (subtle < {SUBTLE_BELOW}, hard >= {SUBTLE_BELOW})", ""]
         lines += _table(cfg["by_intensity"], FAULT_METRICS, "intensity", with_n=True)
+        if cfg["by_cause"]["after a change"]["n_faults"]:
+            lines += ["", f"{level} {name}: by cause", "", *_table(cfg["by_cause"], FAULT_METRICS, "cause", with_n=True)]
     return lines
 
 

@@ -88,12 +88,14 @@ def faults() -> list[dict]:
 
 @app.get("/ground-truth")
 def ground_truth() -> dict:
-    """Injected faults plus the things that are *not* faults: benign events and telemetry blackouts."""
+    """Injected faults plus the things that are *not* faults (benign events, telemetry blackouts), and the
+    change log with its hidden ground truth (`caused`: the fault or benign event a change led to)."""
     sim, _ = _current()
     return {
         "faults": [_with_times(sim, f.to_dict()) for f in sim.faults],
         "benign": [_with_times(sim, b.to_dict()) for b in sim.benign],
         "blackouts": [_with_times(sim, b.to_dict()) for b in sim.blackouts],
+        "changes": [{**c.to_dict(), "time": sim.timestamp(c.t).isoformat()} for c in sim.changes],
     }
 
 

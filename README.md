@@ -14,13 +14,16 @@ NetOps Sentinel is an end-to-end pipeline for that workflow, with a labeled simu
 
 ```mermaid
 flowchart LR
-    A[Telemetry simulator<br/>metrics + syslog + labeled faults] --> B[Metric detectors<br/>robust z / EWMA / Isolation Forest / forecast]
-    A --> C[Log template mining<br/>Drain-style clustering + burst detection]
+    A[Telemetry simulator<br/>metrics + syslog + change log + labeled faults] --> B[Metric detectors<br/>robust z / EWMA / Isolation Forest / forecast]
+    A --> C[Log template mining<br/>new event types + calibrated bursts]
+    A --> K[Silence detection<br/>nodes that stop reporting]
     B --> D[Alerts]
     C --> D
-    D --> E[Correlation<br/>time window + topology, union-find]
+    D --> E[Correlation<br/>union-find, then split at origins]
+    K --> E
     E --> F[Incidents]
-    F --> G[Root-cause ranking<br/>explain / earliness / intensity]
+    F --> G[Root-cause ranking<br/>explain / earliness / intensity / recent change<br/>one or more roots]
+    A -. change log .-> G
     G --> H[Runbook match + summary]
     H --> I[FastAPI + dashboard]
     F --> J[Evaluation vs ground truth]
@@ -28,11 +31,11 @@ flowchart LR
 
 | Stage | Module | What it does |
 |---|---|---|
-| Simulate | `simulator.py` | 10-node campus network + 3-tier app. Diurnal load, Cisco-style syslog, and four fault types (CPU saturation, link flap, memory leak, latency degradation) that cascade downstream with lag. Fault intensity varies from hard failures to subtle "gray" failures. |
+| Simulate | `simulator.py` | 10-node campus network + 3-tier app. Diurnal load, Cisco-style syslog, and four fault types (CPU saturation, link flap, memory leak, latency degradation) that cascade downstream with lag. Fault intensity varies from hard failures to subtle "gray" failures. A `hard` scenario adds concurrent faults, missing telemetry, benign changes, and a change log. |
 | Detect (metrics) | `detection.py` | Robust z-score (rolling median/MAD) and an EWMA control chart that must agree, a per-node Isolation Forest on residuals, and a trend forecaster that predicts resource exhaustion. Runs are debounced into alerts. |
-| Detect (logs) | `logs.py` | Masks IPs, numbers, and interface IDs, clusters lines into templates, then flags new warning+ event types and bursts above the warm-up rate. |
-| Correlate | `correlation.py` | Groups alerts that overlap in time and are topologically related (union-find). |
-| Root cause | `rca.py` | Scores each alerting node by how many other alerting nodes sit downstream of it, how early it alerted, and how loud it is. Returns a ranked list with reasons. |
+| Detect (logs) | `logs.py` | Masks IPs, numbers, and interface IDs, clusters lines into templates, then flags new warning+ event types, and bursts that are both large and improbable under the template's own Poisson rate. |
+| Correlate | `correlation.py` | Groups alerts that overlap in time and are topologically related (union-find), then splits groups whose origins sit on unrelated branches with separate onsets. Nodes whose telemetry goes dark are attached as evidence. |
+| Root cause | `rca.py` | Scores each alerting or silent node by how many other alerting nodes sit downstream of it, how early it alerted, how loud it is, and whether it was changed just before. Declares more than one root when concurrent faults share an incident. Returns a ranked list with reasons. |
 | Remediate | `runbooks.py`, `data/runbooks.yaml` | Matches metric signals and log keywords on the root node to a runbook with steps and an auto-remediation hook. |
 | Measure | `evaluation.py` | Precision, recall, F1, MTTD, RCA top-1/top-3, runbook classification accuracy, alert compression. Pooled over a held-out seed split with bootstrap confidence intervals, broken down by fault kind and intensity. |
 
@@ -54,7 +57,8 @@ About 9 faults per day, 273 in total.
 | + Incident splitting | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
 | + Silent-node evidence | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
 | + Multi-root RCA | 0.90 [0.87, 0.93] | 1.00 [1.00, 1.00] | 0.95 [0.93, 0.96] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [0.99, 1.00] | 4.9 |
-| + Calibrated log bursts (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Calibrated log bursts | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
+| + Change events (full) | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 2.0 [1.6, 2.3] | 1.00 | 1.00 [1.00, 1.00] | 5.4 |
 
 What the ablation shows:
 
@@ -66,7 +70,7 @@ What the ablation shows:
 
 ### Hard scenario: concurrent faults, missing telemetry, benign events
 
-The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py`): about half of the faults get a concurrent partner on the same or an unrelated branch (13.8 faults per day, 413 in total); every series has about 3 short gaps a day; one random node blackout a day; half of the hard network faults knock the device off the monitoring network; and about 3 benign config pushes or rolling restarts a day cause short, real spikes.
+The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py`): about half of the faults get a concurrent partner on the same or an unrelated branch (13.8 faults per day, 413 in total); every series has about 3 short gaps a day; one random node blackout a day; half of the hard network faults knock the device off the monitoring network; about 3 benign config pushes or rolling restarts a day cause short, real spikes; and a change log records deploys and config pushes: 40% of faults follow a change on their root, 80% of benign events are logged, and about 4 harmless changes a day land at random.
 
 | Configuration | Precision | Recall | MTTD (min) | RCA top-1 | RCA top-3 | Runbook match | Wrong merges | Benign paged |
 |---|---|---|---|---|---|---|---|---|
@@ -78,7 +82,8 @@ The same 30 days with everything turned on (`SCENARIOS["hard"]` in `simulator.py
 | + Incident splitting | 0.75 [0.71, 0.79] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.85 [0.81, 0.89] | 0.91 [0.88, 0.94] | 0.78 [0.75, 0.82] | 0.20 [0.11, 0.30] | 1.00 [1.00, 1.00] |
 | + Silent-node evidence | 0.76 [0.71, 0.80] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.94 [0.92, 0.97] | 1.00 [1.00, 1.00] | 0.75 [0.71, 0.80] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 | + Multi-root RCA | 0.76 [0.71, 0.80] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.96 [0.94, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
-| + Calibrated log bursts (full) | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.97 [0.95, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.80, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
+| + Calibrated log bursts | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.97 [0.95, 0.98] | 1.00 [1.00, 1.00] | 0.83 [0.80, 0.87] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
+| + Change events (full) | 0.80 [0.76, 0.84] | 0.99 [0.99, 1.00] | 1.8 [1.5, 2.0] | 0.98 [0.96, 0.99] | 1.00 [1.00, 1.00] | 0.83 [0.79, 0.88] | 0.06 [0.01, 0.12] | 1.00 [1.00, 1.00] |
 
 RCA is scored per fault: a fault is a top-1 hit if its root is first in the incident that carries its evidence, once the roots of *other* faults in that incident are set aside. Under the older per-incident metric (one root per incident, so a merged pair always loses one fault) the log-mining row scores 0.62; the metric change alone accounts for 0.62 to 0.84, and the pipeline changes for 0.84 to 0.96. Wrong merges: share of concurrent faults on unrelated branches that ended up in one incident.
 
@@ -88,7 +93,8 @@ What breaks, and what fixed it:
 - **A switch that goes dark hides the root.** Its metrics are NaN and its logs stop, so it never alerts, and the ranker picked one of its children. **Silent-node evidence** turns "every metric of this node went missing just before its dependents alerted" into an RCA candidate and a splitting origin: top-1 0.85 to 0.94, top-3 to 1.00, wrong merges to 6%.
 - **Merged same-branch faults need two answers.** **Multi-root RCA** declares a second root when the first cannot explain it (an unrelated branch, or CPU/memory symptoms, which do not cascade downstream), puts declared roots first, and matches a runbook per root: runbook match 0.75 to 0.83, top-1 to 0.96. 43 of the 46 extra roots it declares are real roots of concurrent faults.
 - **Log-burst false alarms are gone** (calibrated burst test, see the clean scenario): precision 0.76 to 0.80.
-- **Still broken: benign events page every time.** They are now the only false positives: 83 of 83 false-positive incidents are config pushes and rolling restarts (milestone 5).
+- **A change just before a node alerts is evidence.** The change log (deploys, config pushes) is attached to incidents: a change on a node in the 15 min before it alerted adds to its RCA score, counts as local evidence for declaring a second root, and is named in the summary. For the 158 faults that were caused by a change, top-1 goes 0.95 to 0.99 and runbook match 0.83 to 0.87. It is not free: harmless changes near incidents add a few false extra roots (extra-root precision 0.98 to 0.92), which the tuning split did not show.
+- **Still broken: benign events page every time.** They are the only false positives left: 83 of 83 false-positive incidents are config pushes and rolling restarts. Most of them are in the change log now, which is the obvious next lever (see Roadmap).
 - **Missing telemetry does not cause false alerts or blind the detectors**: every detector treats a missing point as "no evidence" ([DESIGN D10](docs/DESIGN.md)).
 
 How the numbers are produced (details and alternatives in [`docs/DESIGN.md`](docs/DESIGN.md)):
@@ -111,20 +117,24 @@ sentinel run --seed 42 -v          # simulate a day, print incidents, runbooks, 
 sentinel run --seed 5 --scenario hard   # concurrent faults, gaps, benign events
 sentinel eval --split tune         # benchmark on the tuning seeds (use this while developing)
 sentinel eval                      # held-out test split -> reports/benchmark-test.{md,json}
-sentinel export --out data/        # metrics.csv, syslog.log, faults.json, benign_and_blackouts.json
+sentinel export --out data/        # metrics.csv, syslog.log, faults.json, benign_and_blackouts.json, changes.json
 sentinel serve                     # API + dashboard at http://127.0.0.1:8000
 ```
 
 Or with Docker: `docker build -t netops-sentinel . && docker run -p 8000:8000 netops-sentinel`
 
-Example output:
+Example output (hard scenario, seed 4): two concurrent CPU faults, one of them caused by a config push, both named, each with its runbook:
 
 ```
-[INC-0001] CRITICAL incident INC-0001: 10 alerts across 4 node(s) from 04:04 to 04:23.
-Most likely root cause: access-sw-2 (score 1.0; first alert at +0 min; upstream of 3 other
-alerting node(s): api-1, cache-1, web-1). Suggested runbook: RB-LINK (Interface flapping /
-link instability). Impacted: api-1, cache-1, web-1.
+[INC-0008] CRITICAL incident INC-0008: 7 alerts across 2 node(s) from 13:05 to 13:42. Most likely root
+cause: access-sw-2 (score 1.136; config push to access-sw-2 4 min before first alert; first alert at +12 min;
+upstream of 1 other alerting node(s): web-1). Suggested runbook: RB-CPU (Control-plane / worker CPU
+saturation). Concurrent root cause: web-1 (score 0.55; first alert at +0 min; local evidence (CPU/memory or a
+recent change) does not cascade); runbook RB-CPU. Recent change: config push to access-sw-2 at 13:13, 4 min
+before first alert.
 ```
+
+Ground truth for that window: `F005` CPU saturation on `web-1` at 13:05, and `F005b` CPU saturation on `access-sw-2` at 13:17, caused by change `C007` (config push to `access-sw-2` at 13:13).
 
 ## API
 
@@ -135,7 +145,7 @@ link instability). Impacted: api-1, cache-1, web-1.
 | GET | `/incidents` | incident list with root cause and runbook |
 | GET | `/incidents/{id}` | full incident: alert timeline, ranked candidates, runbook steps |
 | GET | `/faults` | injected ground truth |
-| GET | `/ground-truth` | faults plus benign events and telemetry blackouts |
+| GET | `/ground-truth` | faults, benign events, telemetry blackouts, and the change log with what each change caused |
 | GET | `/evaluation` | scores for the current run |
 | GET | `/series/{node}/{metric}` | raw telemetry for charting |
 | GET | `/topology` | dependency graph |
@@ -150,6 +160,9 @@ Interactive docs at `/docs`.
 - **Isolation Forest runs on residuals, not raw values.** Trained on raw metrics, it flagged every afternoon as anomalous because the warm-up window only covered night-time load.
 - **Per-metric noise floors** stop near-zero series (packet loss) from turning tiny wiggles into huge z-scores.
 - **RCA uses topology, not just timing.** A node that explains the other alerts (they are all downstream of it) outranks one that merely alerted first.
+- **Silence is evidence.** A switch that stops reporting while everything below it alerts is the likely root, not a gap to ignore.
+- **Symptoms that do not cascade point to a second root.** CPU or memory saturation, or a change made to a node just before it alerted, cannot come from an upstream fault.
+- **Burst thresholds come from a false-alarm budget,** not a fixed count: a test that runs 1,440 times a day will fire by chance unless its threshold accounts for that.
 - **Everything is scored against ground truth.** Each design change above was kept or dropped based on the benchmark, not intuition.
 
 ## Limitations
@@ -167,7 +180,8 @@ Interactive docs at `/docs`.
 - [x] Concurrent faults and missing-telemetry scenarios to stress RCA
 - [ ] Streaming mode (Kafka or Redis Streams) with online detectors
 - [ ] Ingest real data: Prometheus / OpenTelemetry metrics, syslog over UDP
-- [ ] Change-event correlation (deploys, config pushes) as a root-cause signal
+- [x] Change-event correlation (deploys, config pushes) as a root-cause signal
+- [ ] Change-aware paging: hold a page briefly after a recorded change and drop it if the anomaly clears (benign events are the only false positives left)
 - [ ] LLM-drafted incident summaries and postmortems, grounded in the alert timeline
 - [ ] Human-in-the-loop auto-remediation with approval and rollback
 - [ ] Grafana dashboard and Prometheus exporter for Sentinel's own metrics
